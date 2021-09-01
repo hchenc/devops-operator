@@ -13,11 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package run
+package cmd
 
 import (
 	"fmt"
-	"github.com/hchenc/devops-operator/cmd"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -25,7 +25,7 @@ import (
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "DevOps Operator Run to run DevOps Pipeline",
+	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -33,27 +33,19 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		//setup config
+
+		//setup controller through config instance
+
+		//run controller
 		fmt.Println("run called")
 	},
 }
 
 func init() {
-	var metricsAddr string
+	configPath := filepath.Join(DevOpsOperatorDir, ConfigFileName)
 
-	runCmd.Flags().StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c",configPath,"config file path to load (default is $HOME/devops-operator.yaml)")
+	rootCmd.AddCommand(runCmd)
 
-
-	cmd.RootCmd.AddCommand(runCmd)
-
-
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// runCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -17,8 +17,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -26,8 +26,8 @@ import (
 
 var cfgFile string
 
-// RootCmd represents the base command when called without any subcommands
-var RootCmd = &cobra.Command{
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
 	Use:   "devops-operator",
 	Short: "A brief description of your application",
 	Long: `A longer description that spans multiple lines and likely contains
@@ -42,9 +42,9 @@ to quickly create a Cobra application.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the RootCmd.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	cobra.CheckErr(RootCmd.Execute())
+	cobra.CheckErr(rootCmd.Execute())
 }
 
 func init() {
@@ -54,11 +54,6 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	//RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.devops-operator.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	//RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -74,6 +69,7 @@ func initConfig() {
 		// Search config in home directory with name ".devops-operator" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".devops-operator")
+		cfgFile = home + "/devops-operator.yaml"
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterReconciler("UserToUser", &UserOperatorReconciler{})
+}
+
 type UserOperatorReconciler struct {
 	client.Client
 	Log    logr.Logger

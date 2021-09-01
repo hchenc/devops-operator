@@ -18,6 +18,10 @@ const (
 	RETRYPERIOD = 15
 )
 
+func init() {
+	RegisterReconciler("WorkspaceToGroup", &GroupOperatorReconciler{})
+}
+
 type GroupOperatorReconciler struct {
 	client.Client
 	Log    logr.Logger

@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterReconciler("RolebindingToMember", &RolebindingOperatorReconciler{})
+}
+
 type RolebindingOperatorReconciler struct {
 	client.Client
 	Log    logr.Logger

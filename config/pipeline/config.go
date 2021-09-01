@@ -10,45 +10,40 @@ type Config struct {
 }
 
 type Devops struct {
-	Cis []Cis `yaml:"cis"`
+	Gitlab    Gitlab      `yaml:"gitlab"`
+	Pipelines []Pipelines `yaml:"pipelines"`
 }
 
-type Cis struct {
-	Type string `yaml:"type"`
-	Ci   string `yaml:"ci"`
+type Gitlab struct {
+	Version  string `yaml:"version"`
+	Host     string `yaml:"host"`
+	Port     string    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	Token    string `yaml:"token"`
 }
 
-func WriteTo(config Config, fpath string) error {
+type Pipelines struct {
+	Pipeline string `yaml:"pipeline"`
+	Ci       string `yaml:"ci"`
+}
+
+func WriteConfigTo(config *Config, fpath string) error {
+	data,_ := yaml.Marshal(config)
+	ioutil.WriteFile(fpath, data, 0666)
 	return nil
 }
 
-func GetConfigFrom(fpath string) (*Config, error){
+func GetConfigFrom(fpath string) (*Config, error) {
 	data, err := ioutil.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
 	config := &Config{}
 
-	if err := yaml.Unmarshal(data, config);err != nil {
+	if err := yaml.Unmarshal(data, config); err != nil {
 		return nil, err
 	}
-
-	return config, nil
-}
-
-func loadConfigFromFile(file string) (*Config, error) {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return &Config{}, err
-	}
-
-	return loadConfig(data)
-}
-
-func loadConfig(data []byte) (*Config, error) {
-	config := &Config{}
-
-	yaml.Unmarshal(data, config)
 
 	return config, nil
 }

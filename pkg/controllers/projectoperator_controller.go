@@ -13,6 +13,10 @@ import (
 	"github.com/hchenc/application/pkg/apis/app/v1beta1"
 )
 
+func init() {
+	RegisterReconciler("AppToProject", &ProjectOperatorReconciler{})
+}
+
 type ProjectOperatorReconciler struct {
 	client.Client
 	Log    logr.Logger

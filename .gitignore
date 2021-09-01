@@ -5,6 +5,7 @@ config/pipeline/local_config.yaml
 *.dll
 *.so
 *.dylib
+devops-operator
 bin
 
 # Test binary, build with `go test -c`

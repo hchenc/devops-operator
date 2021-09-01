@@ -13,19 +13,37 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package init
+package cmd
 
 import (
 	"fmt"
-	"github.com/hchenc/devops-operator/cmd"
+	"github.com/hchenc/devops-operator/config/pipeline"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
 
+var (
+	host     = os.Getenv("HOST")
+	port     = os.Getenv("PORT")
+	user     = os.Getenv("USER")
+	password = os.Getenv("PASSWORD")
+)
+
+
+func init() {
+	outputConfigPath := filepath.Join(DevOpsOperatorDir, ConfigFileName)
+
+	initCmd.Flags().StringVarP(&cfgFile, "output-config-path", "o",outputConfigPath,"config file path to place (default is $HOME/devops-operator.yaml)")
+
+	rootCmd.AddCommand(initCmd)
+}
+
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "DevOps Operator Init to generate DevOps Pipeline",
+	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -33,24 +51,29 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+
 		fmt.Println("init called")
+		if err := setUp(); err !=nil{
+			fmt.Println("init error")
+		}
+
 	},
 }
 
-func init() {
-	var configPath string
+func setUp() error {
+	config := &pipeline.Config{}
+	config.Devops.Gitlab.Version = "ee"
+	config.Devops.Gitlab.User = user
+	config.Devops.Gitlab.Host = host
+	config.Devops.Gitlab.Port = port
+	config.Devops.Gitlab.Password = password
 
-	initCmd.Flags().StringVar(&configPath, "config-path", ":8080", "config file (default is $HOME/.devops-operator.yaml)")
-
-	cmd.RootCmd.AddCommand(initCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// initCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	config.Devops.Pipelines = []pipeline.Pipelines{
+		{
+			Pipeline: "java",
+			Ci: "Spring",
+		},
+	}
+	return pipeline.WriteConfigTo(config, cfgFile)
 }
+
