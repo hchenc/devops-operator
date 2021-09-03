@@ -17,7 +17,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/hchenc/devops-operator/config/pipeline"
+	"github.com/hchenc/devops-operator/pkg/models"
+	"github.com/hchenc/devops-operator/pkg/utils"
 	"os"
 	"path/filepath"
 
@@ -51,32 +52,30 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-
 		fmt.Println("init called")
 		if err := setUp(); err !=nil{
 			fmt.Println("init error")
+		}else {
+			fmt.Println("init finished")
 		}
-
 	},
 }
 
 func setUp() error {
-	config := &pipeline.Config{}
+	config := &models.Config{}
 	config.Devops.Gitlab.Version = "ee"
 	config.Devops.Gitlab.User = user
 	config.Devops.Gitlab.Host = host
 	config.Devops.Gitlab.Port = port
 	config.Devops.Gitlab.Password = password
 
-
-
-	config.Devops.Pipelines = []pipeline.Pipelines{
+	config.Devops.Pipelines = []models.Pipelines{
 		{
 			Pipeline: "java",
 			Template: "Spring",
 			Ci: "devops/devops/-/raw/master/java.yml",
 		},
 	}
-	return pipeline.WriteConfigTo(config, cfgFile)
+	return utils.WriteConfigTo(config, cfgFile)
 }
 

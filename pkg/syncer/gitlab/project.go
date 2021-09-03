@@ -3,7 +3,7 @@ package gitlab
 import (
 	"context"
 	"github.com/hchenc/application/pkg/apis/app/v1beta1"
-	"github.com/hchenc/devops-operator/config/pipeline"
+	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/pager/pkg/apis/devops/v1alpha1"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
@@ -34,7 +34,7 @@ type projectInfo struct {
 
 func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	application := obj.(*v1beta1.Application)
-	var pip  pipeline.Pipelines
+	var pip models.Pipelines
 	appType := application.Labels["appType"]
 	if appType == ""{
 		appType = "java"
@@ -249,7 +249,7 @@ func (p projectInfo) list(key string) ([]*git.Project, error) {
 	}
 }
 
-func NewProjectGenerator(name, group string, config *pipeline.Config, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
+func NewProjectGenerator(name, group string, config *models.Config, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
 
 	return &projectInfo{
 		projectName:      name,

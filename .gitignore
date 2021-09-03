@@ -1,4 +1,4 @@
-config/pipeline/local_config.yaml
+config/pipeline/*.yaml
 # Binaries for programs and plugins
 *.exe
 *.exe~

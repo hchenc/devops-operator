@@ -1,24 +1,41 @@
-package gen
+package pipeline
+
 
 import (
 	"errors"
 	git "github.com/xanzy/go-gitlab"
 )
 
-type Config struct {
-	Devops Devops `yaml:"devops"`
-}
+const (
+	JAVA_CIFile = `
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_HOST: tcp://localhost:2375
 
-type Devops struct {
-	Cis []Cis `yaml:"cis"`
-}
+.dind service: &dind_service
+  - alias: docker
+    name: docker:18.09-dind
+    command:
+	  - --insecure-registry=
 
-type Cis struct {
-	Type string `yaml:"type"`
-	Ci   string `yaml:"ci"`
-}
+cache: 
+  key: mvn-cache
+  paths: 
+    - .m2/repository
 
+stages:
+  - install
 
+install dependency:
+  stage: install
+  image: maven:3.6.3-jdk-8
+  tags:
+    - k8s-runner
+  script:
+    - mvn clean compile -Dmaven.test.skip=true
+    - pwd
+`
+)
 
 func installGitLabClient(host, port, user, password, token string) (*git.Client,error) {
 	url := "http://" + host + ":" + port
@@ -82,7 +99,7 @@ func GenPipeline(client *git.Client) error{
 				Action:          git.FileAction(git.FileCreate),
 				FilePath:        git.String("java.yaml"),
 				PreviousPath:    nil,
-				Content:         nil,
+				Content:         git.String(JAVA_CIFile),
 				Encoding:        nil,
 				LastCommitID:    nil,
 				ExecuteFilemode: nil,
@@ -91,7 +108,7 @@ func GenPipeline(client *git.Client) error{
 				Action:          git.FileAction(git.FileCreate),
 				FilePath:        git.String("python.yaml"),
 				PreviousPath:    nil,
-				Content:         nil,
+				Content:         git.String(JAVA_CIFile),
 				Encoding:        nil,
 				LastCommitID:    nil,
 				ExecuteFilemode: nil,
@@ -100,7 +117,7 @@ func GenPipeline(client *git.Client) error{
 				Action:          git.FileAction(git.FileCreate),
 				FilePath:        git.String("nodejs.yaml"),
 				PreviousPath:    nil,
-				Content:         nil,
+				Content:         git.String(JAVA_CIFile),
 				Encoding:        nil,
 				LastCommitID:    nil,
 				ExecuteFilemode: nil,
@@ -116,3 +133,4 @@ func GenPipeline(client *git.Client) error{
 	}
 	return nil
 }
+

@@ -17,8 +17,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/hchenc/devops-operator/config/pipeline"
 	controller "github.com/hchenc/devops-operator/pkg/controllers"
+	"github.com/hchenc/devops-operator/pkg/models"
+	"github.com/hchenc/devops-operator/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
@@ -27,14 +28,15 @@ import (
 
 	"github.com/spf13/cobra"
 )
-var (
-    kubeconfig string
 
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-	metricsAddr string
+var (
+	kubeconfig           string
+	pipelineConfig       *models.Config
+	scheme               = runtime.NewScheme()
+	metricsAddr          string
 	enableLeaderElection bool
 )
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -53,13 +55,13 @@ to quickly create a Cobra application.`,
 			panic(err.Error())
 		}
 		//setup config
-		pipelineConfig,_ := pipeline.GetConfigFrom(cfgFile)
-
-		cc := &controller.CompletedConfig{}
-		err = cc.Complete(pipelineConfig,config)
+		err = utils.GetDataFrom(cfgFile, pipelineConfig)
 		if err != nil {
 			panic(err.Error())
 		}
+
+		dc := &controller.DevopsClientet{}
+		dc.Complete(config)
 		//setup controller through config instance
 		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:             scheme,
@@ -68,7 +70,7 @@ to quickly create a Cobra application.`,
 			LeaderElection:     enableLeaderElection,
 			LeaderElectionID:   "5e352c21.efunds.com",
 		})
-		c,_ := controller.New(cc, mgr)
+		c, _ := controller.New(dc, mgr, pipelineConfig)
 		//run controller
 		fmt.Println("run called")
 		c.Reconcile(ctrl.SetupSignalHandler())
@@ -83,7 +85,7 @@ func init() {
 	} else {
 		runCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "absolute path to the kubeconfig file")
 	}
-	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c",configPath,"config file path to load")
+	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c", configPath, "config file path to load")
 
 	rootCmd.AddCommand(runCmd)
 
