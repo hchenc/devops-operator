@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 )
 
 func init() {
-	RegisterReconciler("AppToProject", &ProjectOperatorReconciler{})
+	RegisterReconciler("AppToProject", SetUpProjectReconcile)
 }
 
 type ProjectOperatorReconciler struct {
@@ -56,4 +57,17 @@ func (r *ProjectOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1beta1.Application{}).
 		Complete(r)
+}
+
+func SetUpProjectReconcile(mgr manager.Manager) {
+
+	_ = v1beta1.AddToScheme(mgr.GetScheme())
+
+	if err := (&ProjectOperatorReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("AppToProject"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr);err != nil{
+		log.Fatalf("unable to create project controller")
+	}
 }

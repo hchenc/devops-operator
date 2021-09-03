@@ -17,7 +17,7 @@ type Devops struct {
 type Gitlab struct {
 	Version  string `yaml:"version"`
 	Host     string `yaml:"host"`
-	Port     string    `yaml:"port"`
+	Port     string `yaml:"port"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 	Token    string `yaml:"token"`
@@ -26,12 +26,13 @@ type Gitlab struct {
 type Pipelines struct {
 	Pipeline string `yaml:"pipeline"`
 	Ci       string `yaml:"ci"`
+	Template string `yaml:"template"`
 }
 
 func WriteConfigTo(config *Config, fpath string) error {
-	data,_ := yaml.Marshal(config)
-	ioutil.WriteFile(fpath, data, 0666)
-	return nil
+	data, _ := yaml.Marshal(config)
+	err := ioutil.WriteFile(fpath, data, 0666)
+	return err
 }
 
 func GetConfigFrom(fpath string) (*Config, error) {

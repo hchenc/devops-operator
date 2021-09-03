@@ -22,3 +22,7 @@ func GetLogger(fields logrus.Fields) *logrus.Logger {
 	logger.WithFields(logrus.Fields{"created": time.Now().UnixNano() / 1e6}).WithFields(fields)
 	return logger
 }
+
+func GetLoggerEntry() *logrus.Entry {
+	return logger.WithFields(logrus.Fields{"created": time.Now().UnixNano() / 1e6})
+}

@@ -9,8 +9,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
+
 	"time"
 )
 
@@ -19,7 +21,7 @@ const (
 )
 
 func init() {
-	RegisterReconciler("WorkspaceToGroup", &GroupOperatorReconciler{})
+	RegisterReconciler("WorkspaceToGroup", SetUpGroupReconcile)
 }
 
 type GroupOperatorReconciler struct {
@@ -85,4 +87,17 @@ func (r workspacePredicate) Delete(e event.DeleteEvent) bool {
 }
 func (r workspacePredicate) Generic(e event.GenericEvent) bool {
 	return false
+}
+
+func SetUpGroupReconcile(mgr manager.Manager) {
+
+	_ = v1alpha2.AddToScheme(mgr.GetScheme())
+
+	if err := (&GroupOperatorReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("WorkspaceTemplate"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr);err != nil{
+		log.Fatalf("unable to create group controller")
+	}
 }

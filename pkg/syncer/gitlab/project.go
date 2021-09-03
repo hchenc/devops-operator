@@ -3,7 +3,7 @@ package gitlab
 import (
 	"context"
 	"github.com/hchenc/application/pkg/apis/app/v1beta1"
-	"github.com/hchenc/devops-operator/pkg/pipeline"
+	"github.com/hchenc/devops-operator/config/pipeline"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/pager/pkg/apis/devops/v1alpha1"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
@@ -34,6 +34,16 @@ type projectInfo struct {
 
 func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	application := obj.(*v1beta1.Application)
+	var pip  pipeline.Pipelines
+	appType := application.Labels["appType"]
+	if appType == ""{
+		appType = "java"
+	}
+	for _, pipe := range p.Config.Devops.Pipelines{
+		if appType == pipe.Pipeline{
+			pip = pipe
+		}
+	}
 
 	projects, err := p.list(application.Name)
 	if len(projects) != 0 {
@@ -88,7 +98,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 		BuildTimeout:                             nil,
 		AutoCancelPendingPipelines:               nil,
 		BuildCoverageRegex:                       nil,
-		CIConfigPath:                             git.String(CIConfigPath),
+		CIConfigPath:                             git.String(pip.Ci),
 		CIForwardDeploymentEnabled:               nil,
 		AutoDevopsEnabled:                        git.Bool(false),
 		AutoDevopsDeployStrategy:                 nil,
@@ -97,9 +107,9 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 		Mirror:                                   nil,
 		MirrorTriggerBuilds:                      nil,
 		InitializeWithReadme:                     git.Bool(true),
-		TemplateName:                             git.String(TemplateName),
-		TemplateProjectID:                        git.Int(TemplateProjectID),
-		UseCustomTemplate:                        git.Bool(UseCustomTemplate),
+		TemplateName:                             git.String(pip.Template),
+		//TemplateProjectID:                        git.Int(TemplateProjectID),
+		//UseCustomTemplate:                        git.Bool(UseCustomTemplate),
 		GroupWithProjectTemplatesID:              git.Int(GroupWithProjectTemplatesID),
 		PackagesEnabled:                          nil,
 		ServiceDeskEnabled:                       nil,
@@ -131,75 +141,75 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	}
 }
 
-func (p projectInfo) assembleProject(name, description *string, groupID *int) *git.CreateProjectOptions{
-	project := &git.CreateProjectOptions{
-		Name:                                name,
-		Path:                                name,
-		NamespaceID:                         groupID,
-		DefaultBranch:                       nil,
-		Description:                         description,
-		IssuesAccessLevel:                   nil,
-		RepositoryAccessLevel:               git.AccessControl(git.PrivateAccessControl),
-		MergeRequestsAccessLevel:            git.AccessControl(git.PrivateAccessControl),
-		ForkingAccessLevel:                  git.AccessControl(git.PrivateAccessControl),
-		BuildsAccessLevel:                   git.AccessControl(git.PrivateAccessControl),
-		WikiAccessLevel:                     git.AccessControl(git.PrivateAccessControl),
-		SnippetsAccessLevel:                 nil,
-		PagesAccessLevel:                    nil,
-		OperationsAccessLevel:               git.AccessControl(git.PrivateAccessControl),
-		EmailsDisabled:                      nil,
-		ResolveOutdatedDiffDiscussions:      nil,
-		ContainerExpirationPolicyAttributes: nil,
-		ContainerRegistryEnabled:            nil,
-		SharedRunnersEnabled:                git.Bool(true),
-		Visibility:                          git.Visibility(git.PrivateVisibility),
-		ImportURL:                           nil,
-		PublicBuilds:                        nil,
-		AllowMergeOnSkippedPipeline:         nil,
-		OnlyAllowMergeIfPipelineSucceeds:    nil,
-		OnlyAllowMergeIfAllDiscussionsAreResolved: nil,
-		MergeMethod:                              nil,
-		RemoveSourceBranchAfterMerge:             git.Bool(false),
-		LFSEnabled:                               nil,
-		RequestAccessEnabled:                     git.Bool(true),
-		TagList:                                  nil,
-		PrintingMergeRequestLinkEnabled:          nil,
-		BuildGitStrategy:                         nil,
-		BuildTimeout:                             nil,
-		AutoCancelPendingPipelines:               nil,
-		BuildCoverageRegex:                       nil,
-		CIConfigPath:                             git.String(CIConfigPath),
-		CIForwardDeploymentEnabled:               nil,
-		AutoDevopsEnabled:                        git.Bool(false),
-		AutoDevopsDeployStrategy:                 nil,
-		ApprovalsBeforeMerge:                     nil,
-		ExternalAuthorizationClassificationLabel: nil,
-		Mirror:                                   nil,
-		MirrorTriggerBuilds:                      nil,
-		InitializeWithReadme:                     git.Bool(true),
-		TemplateName:                             git.String(TemplateName),
-		TemplateProjectID:                        git.Int(TemplateProjectID),
-		UseCustomTemplate:                        git.Bool(UseCustomTemplate),
-		GroupWithProjectTemplatesID:              git.Int(GroupWithProjectTemplatesID),
-		PackagesEnabled:                          nil,
-		ServiceDeskEnabled:                       nil,
-		AutocloseReferencedIssues:                nil,
-		SuggestionCommitMessage:                  nil,
-		IssuesTemplate:                           git.String(IssuesTemplate),
-		MergeRequestsTemplate:                    git.String(MergeRequestsTemplate),
-		IssuesEnabled:                            git.Bool(true),
-		MergeRequestsEnabled:                     git.Bool(true),
-		JobsEnabled:                              nil,
-		WikiEnabled:                              nil,
-		SnippetsEnabled:                          nil,
-	}
-
-	switch p.gitlabVersion {
-	case pipeline.GITLABEEVERSION:
-
-	}
-
-}
+//func (p projectInfo) assembleProject(name, description *string, groupID *int) *git.CreateProjectOptions {
+//	project := &git.CreateProjectOptions{
+//		Name:                                name,
+//		Path:                                name,
+//		NamespaceID:                         groupID,
+//		DefaultBranch:                       nil,
+//		Description:                         description,
+//		IssuesAccessLevel:                   nil,
+//		RepositoryAccessLevel:               git.AccessControl(git.PrivateAccessControl),
+//		MergeRequestsAccessLevel:            git.AccessControl(git.PrivateAccessControl),
+//		ForkingAccessLevel:                  git.AccessControl(git.PrivateAccessControl),
+//		BuildsAccessLevel:                   git.AccessControl(git.PrivateAccessControl),
+//		WikiAccessLevel:                     git.AccessControl(git.PrivateAccessControl),
+//		SnippetsAccessLevel:                 nil,
+//		PagesAccessLevel:                    nil,
+//		OperationsAccessLevel:               git.AccessControl(git.PrivateAccessControl),
+//		EmailsDisabled:                      nil,
+//		ResolveOutdatedDiffDiscussions:      nil,
+//		ContainerExpirationPolicyAttributes: nil,
+//		ContainerRegistryEnabled:            nil,
+//		SharedRunnersEnabled:                git.Bool(true),
+//		Visibility:                          git.Visibility(git.PrivateVisibility),
+//		ImportURL:                           nil,
+//		PublicBuilds:                        nil,
+//		AllowMergeOnSkippedPipeline:         nil,
+//		OnlyAllowMergeIfPipelineSucceeds:    nil,
+//		OnlyAllowMergeIfAllDiscussionsAreResolved: nil,
+//		MergeMethod:                              nil,
+//		RemoveSourceBranchAfterMerge:             git.Bool(false),
+//		LFSEnabled:                               nil,
+//		RequestAccessEnabled:                     git.Bool(true),
+//		TagList:                                  nil,
+//		PrintingMergeRequestLinkEnabled:          nil,
+//		BuildGitStrategy:                         nil,
+//		BuildTimeout:                             nil,
+//		AutoCancelPendingPipelines:               nil,
+//		BuildCoverageRegex:                       nil,
+//		CIConfigPath:                             git.String(CIConfigPath),
+//		CIForwardDeploymentEnabled:               nil,
+//		AutoDevopsEnabled:                        git.Bool(false),
+//		AutoDevopsDeployStrategy:                 nil,
+//		ApprovalsBeforeMerge:                     nil,
+//		ExternalAuthorizationClassificationLabel: nil,
+//		Mirror:                                   nil,
+//		MirrorTriggerBuilds:                      nil,
+//		InitializeWithReadme:                     git.Bool(true),
+//		TemplateName:                             git.String(TemplateName),
+//		TemplateProjectID:                        git.Int(TemplateProjectID),
+//		UseCustomTemplate:                        git.Bool(UseCustomTemplate),
+//		GroupWithProjectTemplatesID:              git.Int(GroupWithProjectTemplatesID),
+//		PackagesEnabled:                          nil,
+//		ServiceDeskEnabled:                       nil,
+//		AutocloseReferencedIssues:                nil,
+//		SuggestionCommitMessage:                  nil,
+//		IssuesTemplate:                           git.String(IssuesTemplate),
+//		MergeRequestsTemplate:                    git.String(MergeRequestsTemplate),
+//		IssuesEnabled:                            git.Bool(true),
+//		MergeRequestsEnabled:                     git.Bool(true),
+//		JobsEnabled:                              nil,
+//		WikiEnabled:                              nil,
+//		SnippetsEnabled:                          nil,
+//	}
+//
+//	switch p.gitlabVersion {
+//	case pipeline.GITLABEEVERSION:
+//
+//	}
+//
+//}
 
 func (p projectInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
@@ -239,7 +249,7 @@ func (p projectInfo) list(key string) ([]*git.Project, error) {
 	}
 }
 
-func NewProjectGenerator(name, group string, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
+func NewProjectGenerator(name, group string, config *pipeline.Config, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
 
 	return &projectInfo{
 		projectName:      name,
@@ -247,6 +257,7 @@ func NewProjectGenerator(name, group string, gitlabClient *git.Client, pagerClie
 		ClientSet: &syncer.ClientSet{
 			PagerClient:  pagerClient,
 			GitlabClient: gitlabClient,
+			Config:       config,
 		},
 	}
 }

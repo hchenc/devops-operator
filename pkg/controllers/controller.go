@@ -7,20 +7,25 @@ import (
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/syncer/gitlab"
 	"github.com/hchenc/devops-operator/pkg/syncer/kubesphere"
+	"github.com/hchenc/devops-operator/pkg/utils"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
+	"github.com/sirupsen/logrus"
 	git "github.com/xanzy/go-gitlab"
-	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"os"
-	controllerruntime "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var (
-	reconcilers map[string]reconcile.Reconciler
+	log = utils.GetLoggerEntry().WithFields(logrus.Fields{
+		"component": "controller",
+	})
+)
 
-	gitlabClient         *git.Client
+var (
+	reconcilersMap = make(map[string]Reconciler)
+
 	projectGenerator     syncer.Generator
 	groupGenerator       syncer.Generator
 	namespaceGenerator   syncer.Generator
@@ -38,8 +43,18 @@ var (
 	memberGeneratorService 	 	syncer.GenerateService
 )
 
-func RegisterReconciler(name string, r reconcile.Reconciler) {
-	reconcilers[name] = r
+type Reconciler interface {
+	SetUp(mgr manager.Manager)
+}
+
+type Reconcile func(mgr manager.Manager)
+
+func (r Reconcile) SetUp(mgr manager.Manager) {
+	r(mgr)
+}
+
+func RegisterReconciler(name string, f Reconcile) {
+	reconcilersMap[name] = f
 }
 
 type CompletedConfig struct {
@@ -53,7 +68,7 @@ type CompletedConfig struct {
 
 	gitlabClient *git.Client
 
-	reconcilers map[string]reconcile.Reconciler
+	reconcilers map[string]Reconciler
 
 }
 
@@ -65,7 +80,7 @@ func (cc *CompletedConfig) Complete(config *pipeline.Config, restConfig *rest.Co
 
 	cc.pagerClient = pager.NewForConfigOrDie(restConfig)
 
-	cc.reconcilers = reconcilers
+	cc.reconcilers = reconcilersMap
 
 	var err error
 	url := "http://" + config.Devops.Gitlab.Host + ":" + config.Devops.Gitlab.Port
@@ -94,18 +109,18 @@ type Controller struct {
 
 	gitlabClient *git.Client
 
-	reconcilers map[string]reconcile.Reconciler
+	reconcilers map[string]Reconciler
 
-	mgr controllerruntime.Manager
+	mgr manager.Manager
 }
 
-func (c *Controller) Reconcile(stopCh chan struct{}){
+func (c *Controller) Reconcile(stopCh <-chan struct{}){
 	if err := c.mgr.Start(stopCh); err != nil {
 		os.Exit(1)
 	}
 }
 
-func New(cc *CompletedConfig, mgr controllerruntime.Manager) (*Controller, error) {
+func New(cc *CompletedConfig, mgr manager.Manager) (*Controller, error) {
 
 	c := &Controller{
 		kubeclient:   cc.kubeclient,
@@ -114,60 +129,27 @@ func New(cc *CompletedConfig, mgr controllerruntime.Manager) (*Controller, error
 		gitlabClient: cc.gitlabClient,
 		mgr:          mgr,
 	}
+	installGenerator(cc.config, cc.pagerClient, cc.kubeclient, cc.appClient, cc.gitlabClient)
 	c.reconcilers = cc.reconcilers
-	for _,reconciler := range reconcilers{
-		reconciler
+	for _,reconciler := range c.reconcilers{
+		reconciler.SetUp(mgr)
 	}
-
+	return c, nil
 }
 
-//type Runable interface {
-//	Run(stopCh chan struct{})
-//}
+//func Install(config *rest.Config) {
+//	client := kubernetes.NewForConfigOrDie(config)
 //
-//type Reconciler func(stopCh chan struct{})
+//	appClient := app.NewForConfigOrDie(config)
 //
-//func (r Reconciler) Run(stopCh chan struct{})  {
-//	r(stopCh)
-//}
+//	pagerClient := pager.NewForConfigOrDie(config)
 //
-//var ReconcilersMap map[string]Reconciler
-//
-//func RegisterReconciler(name string, f Reconciler) {
-//	ReconcilersMap[name] = f
+//	runtime.Must(installGenerator(pagerClient, client, appClient))
+//	runtime.Must(installGeneratorService())
 //}
 
-
-
-
-func Install(config *rest.Config) {
-	client := kubernetes.NewForConfigOrDie(config)
-
-	appClient := app.NewForConfigOrDie(config)
-
-	pagerClient := pager.NewForConfigOrDie(config)
-
-	runtime.Must(installGenerator(pagerClient, client, appClient))
-	runtime.Must(installGeneratorService())
-}
-
-//
-//func installGitLabClient(host, port, user, password, token string) error {
-//	var err error
-//	url := "http://" + host + ":" + port
-//	if token != "" {
-//		gitlabClient, err = git.NewClient(token, git.WithBaseURL(url))
-//		return err
-//	} else if user != "" && password != "" {
-//		gitlabClient, err = git.NewBasicAuthClient(user, password, git.WithBaseURL(url))
-//		return err
-//	} else {
-//		return errors.New("gitlab certification not provided")
-//	}
-//}
-
-func installGenerator(pagerClient *pager.Clientset, clientset *kubernetes.Clientset, appclientset *app.Clientset) error {
-	projectGenerator = gitlab.NewProjectGenerator("", "", gitlabClient, pagerClient)
+func installGenerator(config *pipeline.Config,pagerClient *pager.Clientset, clientset *kubernetes.Clientset, appclientset *app.Clientset, gitlabClient *git.Client) error {
+	projectGenerator = gitlab.NewProjectGenerator("", "", config, gitlabClient, pagerClient)
 	groupGenerator = gitlab.NewGroupGenerator("", gitlabClient)
 	userGenerator = gitlab.NewUserGenerator(gitlabClient, pagerClient)
 	memberGenerator = gitlab.NewMemberGenerator(gitlabClient, pagerClient)

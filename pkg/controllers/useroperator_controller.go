@@ -4,16 +4,18 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
 )
 
 func init() {
-	RegisterReconciler("UserToUser", &UserOperatorReconciler{})
+	RegisterReconciler("UserToUser", SetUpUserReconcile)
 }
 
 type UserOperatorReconciler struct {
@@ -49,3 +51,14 @@ func (u *UserOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(u)
 }
 
+func SetUpUserReconcile(mgr manager.Manager) {
+	_ = v1alpha2.AddToScheme(mgr.GetScheme())
+
+	if err := (&ProjectOperatorReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("UserToUser"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr);err != nil{
+		log.Fatalf("unable to create user controller")
+	}
+}

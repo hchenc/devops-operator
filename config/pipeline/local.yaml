@@ -8,6 +8,7 @@ Devops:
   Pipelines:
   - Ci: devops/devops/-/raw/master/java.yml
     Pipeline: java
+    Template: Spring
   - Ci: devops/devops/-/raw/master/python.yml
     Pipeline: python
   - Ci: devops/devops/-/raw/master/nodejs.yml

@@ -4,9 +4,9 @@ go 1.15
 
 require (
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.1.0 // indirect
+	github.com/go-logr/logr v0.1.0
 	github.com/hchenc/application v1.0.1
-	github.com/hchenc/pager v0.0.1
+	github.com/hchenc/pager v0.0.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v1.2.1

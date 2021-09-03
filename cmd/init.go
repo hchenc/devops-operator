@@ -68,10 +68,13 @@ func setUp() error {
 	config.Devops.Gitlab.Port = port
 	config.Devops.Gitlab.Password = password
 
+
+
 	config.Devops.Pipelines = []pipeline.Pipelines{
 		{
 			Pipeline: "java",
-			Ci: "Spring",
+			Template: "Spring",
+			Ci: "devops/devops/-/raw/master/java.yml",
 		},
 	}
 	return pipeline.WriteConfigTo(config, cfgFile)

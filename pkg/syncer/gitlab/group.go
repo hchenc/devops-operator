@@ -113,7 +113,7 @@ func (g groupInfo) list(key string) ([]*git.Group, error) {
 	}
 }
 
-func NewGroupGenerator(name string, gitlabClient *git.Client) syncer.Generator {
+func NewGroupGenerator(name string,gitlabClient *git.Client) syncer.Generator {
 	return &groupInfo{
 		groupName: name,
 		ClientSet: &syncer.ClientSet{

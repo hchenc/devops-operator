@@ -2,6 +2,7 @@ package syncer
 
 import (
 	app "github.com/hchenc/application/pkg/client/clientset/versioned"
+	"github.com/hchenc/devops-operator/config/pipeline"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	git "github.com/xanzy/go-gitlab"
 	"k8s.io/client-go/kubernetes"
@@ -19,6 +20,9 @@ type ClientSet struct {
 	PagerClient *pager.Clientset
 
 	GitlabClient *git.Client
+
+	Config *pipeline.Config
+
 }
 
 type GenerateService interface {

@@ -17,11 +17,24 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/hchenc/devops-operator/config/pipeline"
+	controller "github.com/hchenc/devops-operator/pkg/controllers"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+	"os"
 	"path/filepath"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/spf13/cobra"
 )
+var (
+    kubeconfig string
 
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+	metricsAddr string
+	enableLeaderElection bool
+)
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -33,19 +46,52 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// use the current context in kubeconfig
+
+		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
 		//setup config
+		pipelineConfig,_ := pipeline.GetConfigFrom(cfgFile)
 
+		cc := &controller.CompletedConfig{}
+		err = cc.Complete(pipelineConfig,config)
+		if err != nil {
+			panic(err.Error())
+		}
 		//setup controller through config instance
-
+		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+			Scheme:             scheme,
+			MetricsBindAddress: metricsAddr,
+			Port:               9443,
+			LeaderElection:     enableLeaderElection,
+			LeaderElectionID:   "5e352c21.efunds.com",
+		})
+		c,_ := controller.New(cc, mgr)
 		//run controller
 		fmt.Println("run called")
+		c.Reconcile(ctrl.SetupSignalHandler())
 	},
 }
 
 func init() {
 	configPath := filepath.Join(DevOpsOperatorDir, ConfigFileName)
 
-	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c",configPath,"config file path to load (default is $HOME/devops-operator.yaml)")
+	if home := homeDir(); home != "" {
+		runCmd.Flags().StringVar(&kubeconfig, "kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	} else {
+		runCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "absolute path to the kubeconfig file")
+	}
+	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c",configPath,"config file path to load")
+
 	rootCmd.AddCommand(runCmd)
 
+}
+
+func homeDir() string {
+	if h := os.Getenv("HOME"); h != "" {
+		return h
+	}
+	return os.Getenv("USERPROFILE") // windows
 }
