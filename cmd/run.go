@@ -19,10 +19,10 @@ import (
 	"fmt"
 	controller "github.com/hchenc/devops-operator/pkg/controllers"
 	"github.com/hchenc/devops-operator/pkg/models"
-	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/mitchellh/go-homedir"
+	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
-	"os"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -30,8 +30,10 @@ import (
 )
 
 var (
+	homePath			 string
+	err                  error
 	kubeconfig           string
-	pipelineConfig       *models.Config
+	pipelineConfig       = &models.Config{}
 	scheme               = runtime.NewScheme()
 	metricsAddr          string
 	enableLeaderElection bool
@@ -40,22 +42,11 @@ var (
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "run Devops Controller to watch kubernetes and kubesphere resource",
 	Run: func(cmd *cobra.Command, args []string) {
 		// use the current context in kubeconfig
 
 		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			panic(err.Error())
-		}
-		//setup config
-		err = utils.GetDataFrom(cfgFile, pipelineConfig)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -78,22 +69,40 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	configPath := filepath.Join(DevOpsOperatorDir, ConfigFileName)
+	homePath, err = homedir.Dir()
+	cobra.CheckErr(err)
 
-	if home := homeDir(); home != "" {
-		runCmd.Flags().StringVar(&kubeconfig, "kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		runCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c", configPath, "config file path to load")
+	cobra.OnInitialize(initConfig)
+
+	runCmd.Flags().StringVarP(&kubeconfig, "kubeconfig", "k", filepath.Join(homePath, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c", filepath.Join(homePath,".devops-operator.yaml"), "(optional) config file path to load")
 
 	rootCmd.AddCommand(runCmd)
 
 }
 
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
+func initConfig() {
+
+	if kubeconfig != "" {
+		viper.SetConfigFile(kubeconfig)
 	}
-	return os.Getenv("USERPROFILE") // windows
+
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(homePath)
+		viper.SetConfigName(".devops-operator.yaml")
+	}
+
+	if err := viper.ReadInConfig(); err != nil{
+		panic(err)
+	}
+
+	// If a config file is found, read it in.
+	if err := viper.Unmarshal(pipelineConfig); err != nil {
+		panic(err)
+	}
+
 }

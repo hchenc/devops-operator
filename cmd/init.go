@@ -36,7 +36,7 @@ var (
 func init() {
 	outputConfigPath := filepath.Join(DevOpsOperatorDir, ConfigFileName)
 
-	initCmd.Flags().StringVarP(&cfgFile, "output-config-path", "o",outputConfigPath,"config file path to place (default is $HOME/devops-operator.yaml)")
+	initCmd.Flags().StringVarP(&cfgFile, "output-config-path", "o",outputConfigPath,"config file path to place")
 
 	rootCmd.AddCommand(initCmd)
 }
