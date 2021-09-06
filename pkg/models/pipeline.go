@@ -1,25 +1,32 @@
 package models
 
 type Config struct {
-	Devops Devops `yaml:"devops"`
+	Devops Devops `yaml:"Devops"`
 }
 
 type Devops struct {
-	Gitlab    Gitlab      `yaml:"gitlab"`
-	Pipelines []Pipelines `yaml:"pipelines"`
+	Harbor    Harbor      `yaml:"Harbor"`
+	Gitlab    Gitlab      `yaml:"Gitlab"`
+	Pipelines []Pipelines `yaml:"Pipelines"`
+}
+
+type Harbor struct {
+	User     string `yaml:"User"`
+	Password string `yaml:"Password"`
+	Host     string `yaml:"Host"`
 }
 
 type Gitlab struct {
-	Version  string `yaml:"version"`
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	Token    string `yaml:"token"`
+	Password string `yaml:"Password"`
+	Port     string `yaml:"Port"`
+	Token    string `yaml:"Token"`
+	User     string `yaml:"User"`
+	Version  string `yaml:"Version"`
+	Host     string `yaml:"Host"`
 }
 
 type Pipelines struct {
-	Pipeline string `yaml:"pipeline"`
-	Ci       string `yaml:"ci"`
-	Template string `yaml:"template"`
+	Ci       string `yaml:"Ci"`
+	Pipeline string `yaml:"Pipeline"`
+	Template string `yaml:"Template"`
 }

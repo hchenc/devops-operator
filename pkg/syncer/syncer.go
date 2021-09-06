@@ -3,6 +3,7 @@ package syncer
 import (
 	app "github.com/hchenc/application/pkg/client/clientset/versioned"
 	"github.com/hchenc/devops-operator/pkg/models"
+	harbor "github.com/hchenc/go-harbor"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	git "github.com/xanzy/go-gitlab"
 	"k8s.io/client-go/kubernetes"
@@ -20,6 +21,8 @@ type ClientSet struct {
 	PagerClient *pager.Clientset
 
 	GitlabClient *git.Client
+
+	HarborClient *harbor.APIClient
 
 	Config *models.Config
 

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/mitchellh/go-homedir"
 	"os"
 	"path/filepath"
 
@@ -26,17 +27,23 @@ import (
 )
 
 var (
+	outputCfgFile string
+
 	host     = os.Getenv("HOST")
 	port     = os.Getenv("PORT")
 	user     = os.Getenv("USER")
 	password = os.Getenv("PASSWORD")
+
+	harborHost     = os.Getenv("HarborHost")
+	harborUser     = os.Getenv("HarborUser")
+	harborPassword = os.Getenv("HarborPassword")
 )
 
-
 func init() {
-	outputConfigPath := filepath.Join(DevOpsOperatorDir, ConfigFileName)
+	homePath, err = homedir.Dir()
+	cobra.CheckErr(err)
 
-	initCmd.Flags().StringVarP(&cfgFile, "output-config-path", "o",outputConfigPath,"config file path to place")
+	initCmd.Flags().StringVarP(&outputCfgFile, "output-config-path", "o", filepath.Join(homePath, ".devops-operator.yaml"), "(optional) config file path to place")
 
 	rootCmd.AddCommand(initCmd)
 }
@@ -53,9 +60,9 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("init called")
-		if err := setUp(); err !=nil{
+		if err := setUp(); err != nil {
 			fmt.Println("init error")
-		}else {
+		} else {
 			fmt.Println("init finished")
 		}
 	},
@@ -69,13 +76,27 @@ func setUp() error {
 	config.Devops.Gitlab.Port = port
 	config.Devops.Gitlab.Password = password
 
+	config.Devops.Harbor.Host = harborHost
+	config.Devops.Harbor.User = harborUser
+	config.Devops.Harbor.Password = harborPassword
+
 	config.Devops.Pipelines = []models.Pipelines{
 		{
 			Pipeline: "java",
 			Template: "Spring",
-			Ci: "devops/devops/-/raw/master/java.yml",
+			Ci:       "devops/devops/-/raw/master/java.yml",
+		},
+		{
+			Pipeline: "Python",
+			Template: "",
+			Ci:       "devops/devops/-/raw/master/python.yml",
+		},
+		{
+			Pipeline: "nodejs",
+			Template: "",
+			Ci:       "devops/devops/-/raw/master/nodejs.yml",
 		},
 	}
-	return utils.WriteConfigTo(config, cfgFile)
-}
 
+	return utils.WriteConfigTo(config, outputCfgFile)
+}

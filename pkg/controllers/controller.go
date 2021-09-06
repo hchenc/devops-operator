@@ -1,13 +1,16 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	app "github.com/hchenc/application/pkg/client/clientset/versioned"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/syncer/gitlab"
+	"github.com/hchenc/devops-operator/pkg/syncer/harbor"
 	"github.com/hchenc/devops-operator/pkg/syncer/kubesphere"
 	"github.com/hchenc/devops-operator/pkg/utils"
+	harbor2 "github.com/hchenc/go-harbor"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	git "github.com/xanzy/go-gitlab"
@@ -34,6 +37,7 @@ var (
 	userGenerator        syncer.Generator
 	rolebindingGenerator syncer.Generator
 	memberGenerator      syncer.Generator
+	harborGenerator      syncer.Generator
 
 	projectGeneratorService     syncer.GenerateService
 	groupGeneratorService       syncer.GenerateService
@@ -42,6 +46,7 @@ var (
 	userGeneratorService        syncer.GenerateService
 	rolebindingGeneratorService syncer.GenerateService
 	memberGeneratorService      syncer.GenerateService
+	harborGeneratorService      syncer.GenerateService
 )
 
 type Reconciler interface {
@@ -81,6 +86,9 @@ func (cc *DevopsClientet) Complete(restConfig *rest.Config) {
 }
 
 type Controller struct {
+
+	ctx context.Context
+
 	config *models.Config
 
 	kubeclient *kubernetes.Clientset
@@ -90,6 +98,8 @@ type Controller struct {
 	pagerClient *pager.Clientset
 
 	gitlabClient *git.Client
+
+	harborClient *harbor2.APIClient
 
 	reconcilers map[string]Reconciler
 
@@ -124,7 +134,14 @@ func New(cc *DevopsClientet, mgr manager.Manager, config *models.Config) (*Contr
 		return nil, errors.New("gitlab certification not provided")
 	}
 
-	runtime.Must(installGenerator(c.config, cc.pagerClient, cc.kubeclient, cc.appClient, cc.gitlabClient))
+	harborCfg := harbor2.NewConfiguration(config.Devops.Harbor.Host)
+	c.harborClient = harbor2.NewAPIClient(harborCfg)
+	c.ctx = context.WithValue(context.Background(), harbor2.ContextBasicAuth, harbor2.BasicAuth{
+		UserName: config.Devops.Harbor.User,
+		Password: config.Devops.Harbor.Password,
+	})
+
+	runtime.Must(installGenerator(c.config, cc.pagerClient, cc.kubeclient, cc.appClient, cc.gitlabClient, c.harborClient, c.ctx))
 	runtime.Must(installGeneratorService())
 
 	for _, reconciler := range c.reconcilers {
@@ -145,7 +162,7 @@ func New(cc *DevopsClientet, mgr manager.Manager, config *models.Config) (*Contr
 //	runtime.Must(installGeneratorService())
 //}
 
-func installGenerator(config *models.Config, pagerClient *pager.Clientset, clientset *kubernetes.Clientset, appclientset *app.Clientset, gitlabClient *git.Client) error {
+func installGenerator(config *models.Config, pagerClient *pager.Clientset, clientset *kubernetes.Clientset, appclientset *app.Clientset, gitlabClient *git.Client, harborClient *harbor2.APIClient, ctx context.Context) error {
 	projectGenerator = gitlab.NewProjectGenerator("", "", config, gitlabClient, pagerClient)
 	groupGenerator = gitlab.NewGroupGenerator("", gitlabClient)
 	userGenerator = gitlab.NewUserGenerator(gitlabClient, pagerClient)
@@ -154,6 +171,9 @@ func installGenerator(config *models.Config, pagerClient *pager.Clientset, clien
 	namespaceGenerator = kubesphere.NewNamespaceGenerator(clientset)
 	applicationGenerator = kubesphere.NewApplicationGenerator(appclientset)
 	rolebindingGenerator = kubesphere.NewRolebindingGenerator(pagerClient, clientset)
+
+	harborGenerator = harbor.NewHarborProjectGenerator("","", harborClient, ctx)
+
 	return nil
 }
 
@@ -165,5 +185,6 @@ func installGeneratorService() error {
 	userGeneratorService = syncer.NewGenerateService(userGenerator)
 	rolebindingGeneratorService = syncer.NewGenerateService(rolebindingGenerator)
 	memberGeneratorService = syncer.NewGenerateService(memberGenerator)
+	harborGeneratorService = syncer.NewGenerateService(harborGenerator)
 	return nil
 }

@@ -30,9 +30,10 @@ import (
 )
 
 var (
+	inputCfgFile		 string
+	kubeconfig           string
 	homePath			 string
 	err                  error
-	kubeconfig           string
 	pipelineConfig       = &models.Config{}
 	scheme               = runtime.NewScheme()
 	metricsAddr          string
@@ -45,7 +46,7 @@ var runCmd = &cobra.Command{
 	Short: "run Devops Controller to watch kubernetes and kubesphere resource",
 	Run: func(cmd *cobra.Command, args []string) {
 		// use the current context in kubeconfig
-
+		initConfig()
 		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			panic(err.Error())
@@ -72,10 +73,10 @@ func init() {
 	homePath, err = homedir.Dir()
 	cobra.CheckErr(err)
 
-	cobra.OnInitialize(initConfig)
+	//cobra.OnInitialize(initConfig)
 
 	runCmd.Flags().StringVarP(&kubeconfig, "kubeconfig", "k", filepath.Join(homePath, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	runCmd.Flags().StringVarP(&cfgFile, "config-path", "c", filepath.Join(homePath,".devops-operator.yaml"), "(optional) config file path to load")
+	runCmd.Flags().StringVarP(&inputCfgFile, "config-path", "c", filepath.Join(homePath,".devops-operator.yaml"), "(optional) config file path to load")
 
 	rootCmd.AddCommand(runCmd)
 
@@ -87,9 +88,9 @@ func initConfig() {
 		viper.SetConfigFile(kubeconfig)
 	}
 
-	if cfgFile != "" {
+	if inputCfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
+		viper.SetConfigFile(inputCfgFile)
 	} else {
 		viper.SetConfigType("yaml")
 		viper.AddConfigPath(homePath)

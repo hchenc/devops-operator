@@ -55,6 +55,14 @@ func (g *GroupOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
 		}
+
+		// create harbor's project
+		_, err = harborGeneratorService.Add(workspaceTemplate)
+		if err != nil {
+			return reconcile.Result{
+				RequeueAfter: RETRYPERIOD * time.Second,
+			}, err
+		}
 	}
 	return reconcile.Result{}, nil
 }
@@ -97,7 +105,7 @@ func SetUpGroupReconcile(mgr manager.Manager) {
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("WorkspaceTemplate"),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr);err != nil{
+	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create group controller")
 	}
 }
