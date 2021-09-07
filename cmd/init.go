@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/hchenc/devops-operator/pkg/models"
+	"github.com/hchenc/devops-operator/pkg/pipeline"
 	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	"os"
@@ -96,6 +97,21 @@ func setUp() error {
 			Template: "",
 			Ci:       "devops/devops/-/raw/master/nodejs.yml",
 		},
+	}
+	gitClient, _ := pipeline.InstallGitLabClient(config.Devops.Gitlab.Host,config.Devops.Gitlab.Port,config.Devops.Gitlab.User, config.Devops.Gitlab.Password, "")
+
+	id, err := pipeline.GenGroup(gitClient)
+	if err != nil{
+		panic(err)
+	}
+
+	id, err = pipeline.GenProject(id, gitClient)
+	if err != nil{
+		panic(err)
+	}
+
+	if err := pipeline.GenPipeline(id, gitClient); err != nil{
+		panic(err)
 	}
 
 	return utils.WriteConfigTo(config, outputCfgFile)

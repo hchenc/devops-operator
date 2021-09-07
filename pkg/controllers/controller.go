@@ -65,25 +65,25 @@ type ClientSet struct {
 	harborClient *harbor2.APIClient
 }
 
-func (cc *ClientSet) Initial(restConfig *rest.Config, devopsConfig *models.Config) {
+func (cs *ClientSet) Initial(restConfig *rest.Config, devopsConfig *models.Config) {
 
-	cc.config = devopsConfig
+	cs.config = devopsConfig
 
-	cc.kubeclient = kubernetes.NewForConfigOrDie(restConfig)
+	cs.kubeclient = kubernetes.NewForConfigOrDie(restConfig)
 
-	cc.appClient = app.NewForConfigOrDie(restConfig)
+	cs.appClient = app.NewForConfigOrDie(restConfig)
 
-	cc.pagerClient = pager.NewForConfigOrDie(restConfig)
+	cs.pagerClient = pager.NewForConfigOrDie(restConfig)
 
 	var err error
 	url := "http://" + devopsConfig.Devops.Gitlab.Host + ":" + devopsConfig.Devops.Gitlab.Port
 	if devopsConfig.Devops.Gitlab.Token != "" {
-		cc.gitlabClient, err = git.NewClient(devopsConfig.Devops.Gitlab.Token, git.WithBaseURL(url))
+		cs.gitlabClient, err = git.NewClient(devopsConfig.Devops.Gitlab.Token, git.WithBaseURL(url))
 		if err != nil {
 			panic(err)
 		}
 	} else if devopsConfig.Devops.Gitlab.User != "" && devopsConfig.Devops.Gitlab.Password != "" {
-		cc.gitlabClient, err = git.NewBasicAuthClient(devopsConfig.Devops.Gitlab.User, devopsConfig.Devops.Gitlab.Password, git.WithBaseURL(url))
+		cs.gitlabClient, err = git.NewBasicAuthClient(devopsConfig.Devops.Gitlab.User, devopsConfig.Devops.Gitlab.Password, git.WithBaseURL(url))
 		if err != nil {
 			panic(err)
 		}
@@ -96,7 +96,7 @@ func (cc *ClientSet) Initial(restConfig *rest.Config, devopsConfig *models.Confi
 		Password: devopsConfig.Devops.Harbor.Password,
 	}))
 
-	cc.harborClient = harbor2.NewAPIClient(harborCfg)
+	cs.harborClient = harbor2.NewAPIClient(harborCfg)
 
 }
 
