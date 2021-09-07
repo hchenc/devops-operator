@@ -30,9 +30,9 @@ import (
 )
 
 var (
-	inputCfgFile		 string
+	inputCfgFile         string
 	kubeconfig           string
-	homePath			 string
+	homePath             string
 	err                  error
 	pipelineConfig       = &models.Config{}
 	scheme               = runtime.NewScheme()
@@ -76,7 +76,7 @@ func init() {
 	//cobra.OnInitialize(initConfig)
 
 	runCmd.Flags().StringVarP(&kubeconfig, "kubeconfig", "k", filepath.Join(homePath, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	runCmd.Flags().StringVarP(&inputCfgFile, "config-path", "c", filepath.Join(homePath,".devops-operator.yaml"), "(optional) config file path to load")
+	runCmd.Flags().StringVarP(&inputCfgFile, "config-path", "c", filepath.Join(homePath, ".devops-operator.yaml"), "(optional) config file path to load")
 
 	rootCmd.AddCommand(runCmd)
 
@@ -97,7 +97,7 @@ func initConfig() {
 		viper.SetConfigName(".devops-operator.yaml")
 	}
 
-	if err := viper.ReadInConfig(); err != nil{
+	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
 

@@ -25,7 +25,6 @@ type ClientSet struct {
 	HarborClient *harbor.APIClient
 
 	Config *models.Config
-
 }
 
 type GenerateService interface {

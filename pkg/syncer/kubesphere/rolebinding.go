@@ -53,7 +53,7 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-		} else if err == nil{
+		} else if err == nil {
 			continue
 		} else {
 			return nil, err
@@ -86,7 +86,7 @@ func NewRolebindingGenerator(pagerClient *pager.Clientset, clientset *kubernetes
 	return rolebindingInfo{
 		&syncer.ClientSet{
 			PagerClient: pagerClient,
-			Client:     clientset,
+			Client:      clientset,
 		},
 	}
 }

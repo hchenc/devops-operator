@@ -1,6 +1,5 @@
 package pipeline
 
-
 import (
 	"errors"
 	git "github.com/xanzy/go-gitlab"
@@ -37,7 +36,7 @@ install dependency:
 `
 )
 
-func installGitLabClient(host, port, user, password, token string) (*git.Client,error) {
+func installGitLabClient(host, port, user, password, token string) (*git.Client, error) {
 	url := "http://" + host + ":" + port
 	if token != "" {
 		gitlabClient, err := git.NewClient(token, git.WithBaseURL(url))
@@ -58,7 +57,7 @@ func GenGroup(client *git.Client) error {
 	if err != nil {
 		return err
 	}
-	if len(groups) != 0{
+	if len(groups) != 0 {
 		return nil
 	}
 
@@ -87,14 +86,14 @@ func GenGroup(client *git.Client) error {
 	return nil
 }
 
-func GenPipeline(client *git.Client) error{
-	_,_,err := client.Commits.CreateCommit("",&git.CreateCommitOptions{
+func GenPipeline(client *git.Client) error {
+	_, _, err := client.Commits.CreateCommit("", &git.CreateCommitOptions{
 		Branch:        git.String(""),
 		CommitMessage: git.String("devops pipeline init"),
 		StartBranch:   nil,
 		StartSHA:      nil,
 		StartProject:  nil,
-		Actions:       []*git.CommitActionOptions{
+		Actions: []*git.CommitActionOptions{
 			{
 				Action:          git.FileAction(git.FileCreate),
 				FilePath:        git.String("java.yaml"),
@@ -123,14 +122,13 @@ func GenPipeline(client *git.Client) error{
 				ExecuteFilemode: nil,
 			},
 		},
-		AuthorEmail:   nil,
-		AuthorName:    nil,
-		Stats:         nil,
-		Force:         nil,
+		AuthorEmail: nil,
+		AuthorName:  nil,
+		Stats:       nil,
+		Force:       nil,
 	})
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	return nil
 }
-

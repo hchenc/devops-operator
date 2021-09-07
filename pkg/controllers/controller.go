@@ -30,14 +30,14 @@ var (
 var (
 	reconcilersMap = make(map[string]Reconciler)
 
-	projectGenerator     syncer.Generator
-	groupGenerator       syncer.Generator
-	namespaceGenerator   syncer.Generator
-	applicationGenerator syncer.Generator
-	userGenerator        syncer.Generator
-	rolebindingGenerator syncer.Generator
-	memberGenerator      syncer.Generator
-	harborGenerator      syncer.Generator
+	gitlabProjectGenerator syncer.Generator
+	groupGenerator         syncer.Generator
+	namespaceGenerator     syncer.Generator
+	applicationGenerator   syncer.Generator
+	userGenerator          syncer.Generator
+	rolebindingGenerator   syncer.Generator
+	memberGenerator        syncer.Generator
+	harborProjectGenerator syncer.Generator
 
 	projectGeneratorService     syncer.GenerateService
 	groupGeneratorService       syncer.GenerateService
@@ -64,7 +64,6 @@ func RegisterReconciler(name string, f Reconcile) {
 }
 
 type DevopsClientet struct {
-
 	kubeclient *kubernetes.Clientset
 
 	appClient *app.Clientset
@@ -72,7 +71,6 @@ type DevopsClientet struct {
 	pagerClient *pager.Clientset
 
 	gitlabClient *git.Client
-
 }
 
 func (cc *DevopsClientet) Complete(restConfig *rest.Config) {
@@ -86,9 +84,6 @@ func (cc *DevopsClientet) Complete(restConfig *rest.Config) {
 }
 
 type Controller struct {
-
-	ctx context.Context
-
 	config *models.Config
 
 	kubeclient *kubernetes.Clientset
@@ -134,14 +129,14 @@ func New(cc *DevopsClientet, mgr manager.Manager, config *models.Config) (*Contr
 		return nil, errors.New("gitlab certification not provided")
 	}
 
-	harborCfg := harbor2.NewConfiguration(config.Devops.Harbor.Host)
-	c.harborClient = harbor2.NewAPIClient(harborCfg)
-	c.ctx = context.WithValue(context.Background(), harbor2.ContextBasicAuth, harbor2.BasicAuth{
+	harborCfg := harbor2.NewConfigurationWithContext(config.Devops.Harbor.Host, context.WithValue(context.Background(), harbor2.ContextBasicAuth, harbor2.BasicAuth{
 		UserName: config.Devops.Harbor.User,
 		Password: config.Devops.Harbor.Password,
-	})
+	}))
 
-	runtime.Must(installGenerator(c.config, cc.pagerClient, cc.kubeclient, cc.appClient, cc.gitlabClient, c.harborClient, c.ctx))
+	c.harborClient = harbor2.NewAPIClient(harborCfg)
+
+	runtime.Must(installGenerator(c.config, cc.pagerClient, cc.kubeclient, cc.appClient, cc.gitlabClient, c.harborClient))
 	runtime.Must(installGeneratorService())
 
 	for _, reconciler := range c.reconcilers {
@@ -162,8 +157,8 @@ func New(cc *DevopsClientet, mgr manager.Manager, config *models.Config) (*Contr
 //	runtime.Must(installGeneratorService())
 //}
 
-func installGenerator(config *models.Config, pagerClient *pager.Clientset, clientset *kubernetes.Clientset, appclientset *app.Clientset, gitlabClient *git.Client, harborClient *harbor2.APIClient, ctx context.Context) error {
-	projectGenerator = gitlab.NewProjectGenerator("", "", config, gitlabClient, pagerClient)
+func installGenerator(config *models.Config, pagerClient *pager.Clientset, clientset *kubernetes.Clientset, appclientset *app.Clientset, gitlabClient *git.Client, harborClient *harbor2.APIClient) error {
+	gitlabProjectGenerator = gitlab.NewGitLabProjectGenerator("", "", config, gitlabClient, pagerClient)
 	groupGenerator = gitlab.NewGroupGenerator("", gitlabClient)
 	userGenerator = gitlab.NewUserGenerator(gitlabClient, pagerClient)
 	memberGenerator = gitlab.NewMemberGenerator(gitlabClient, pagerClient)
@@ -172,19 +167,19 @@ func installGenerator(config *models.Config, pagerClient *pager.Clientset, clien
 	applicationGenerator = kubesphere.NewApplicationGenerator(appclientset)
 	rolebindingGenerator = kubesphere.NewRolebindingGenerator(pagerClient, clientset)
 
-	harborGenerator = harbor.NewHarborProjectGenerator("","", harborClient, ctx)
+	harborProjectGenerator = harbor.NewHarborProjectGenerator("", "", harborClient)
 
 	return nil
 }
 
 func installGeneratorService() error {
-	projectGeneratorService = syncer.NewGenerateService(projectGenerator)
+	projectGeneratorService = syncer.NewGenerateService(gitlabProjectGenerator)
 	groupGeneratorService = syncer.NewGenerateService(groupGenerator)
 	namespaceGeneratorService = syncer.NewGenerateService(namespaceGenerator)
 	applicationGeneratorService = syncer.NewGenerateService(applicationGenerator)
 	userGeneratorService = syncer.NewGenerateService(userGenerator)
 	rolebindingGeneratorService = syncer.NewGenerateService(rolebindingGenerator)
 	memberGeneratorService = syncer.NewGenerateService(memberGenerator)
-	harborGeneratorService = syncer.NewGenerateService(harborGenerator)
+	harborGeneratorService = syncer.NewGenerateService(harborProjectGenerator)
 	return nil
 }

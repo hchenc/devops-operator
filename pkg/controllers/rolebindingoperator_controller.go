@@ -67,7 +67,7 @@ func SetUpRolebindingReconcile(mgr manager.Manager) {
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("RolebindingToMember"),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr);err != nil{
+	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create rolebinding controller")
 	}
 }

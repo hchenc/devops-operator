@@ -313,8 +313,8 @@ github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2p
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/hchenc/application v1.0.1 h1:tz3T8ZPlISRYm2ghCoY+qmI40NzyMxBKePnTAgpd2cI=
 github.com/hchenc/application v1.0.1/go.mod h1:0Z2p2XtIA/hBKZ5w8siIrP2yRMvA3EBO8BDk5Yvh8XQ=
-github.com/hchenc/go-harbor v0.0.1 h1:0G7/QXciPIuDDw7PZc9zyoxHbPjHohYHyqbHFJbtJ/g=
-github.com/hchenc/go-harbor v0.0.1/go.mod h1:IIIU/lWkH6ofWSTXm/TZ61+NkrkH9j96m7zwTNvcYOk=
+github.com/hchenc/go-harbor v0.0.2 h1:G8/D0wPgzYqf63CiS9Hw9gxnW0BeQw8HavOlQkFo650=
+github.com/hchenc/go-harbor v0.0.2/go.mod h1:IIIU/lWkH6ofWSTXm/TZ61+NkrkH9j96m7zwTNvcYOk=
 github.com/hchenc/pager v0.0.2 h1:aJksp0x2+SQmsTxUZ+JW9HsNBvlc3hx8uyxK8WYD2LU=
 github.com/hchenc/pager v0.0.2/go.mod h1:Khx86Gt603/CXQuYZ2hdDiLq0oMBNkxUIaPjN5pJMQk=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=

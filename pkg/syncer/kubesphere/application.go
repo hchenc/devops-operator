@@ -22,13 +22,13 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 		"uat":     namespacePrefix + "-uat",
 		"smoking": namespacePrefix + "-smoking",
 	}
-	for k, v := range candidates{
-		if v == application.Namespace{
+	for k, v := range candidates {
+		if v == application.Namespace {
 			continue
 		}
 		application.Namespace = k
 		_, err := a.AppClient.AppV1beta1().Applications(k).Create(ctx, application, v1.CreateOptions{})
-		if err != nil{
+		if err != nil {
 			return nil, err
 		}
 	}

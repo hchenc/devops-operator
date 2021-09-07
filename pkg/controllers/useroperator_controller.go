@@ -58,7 +58,7 @@ func SetUpUserReconcile(mgr manager.Manager) {
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("UserToUser"),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr);err != nil{
+	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create user controller")
 	}
 }

@@ -49,9 +49,9 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 		External:            nil,
 		PrivateProfile:      nil,
 		Note:                nil,
-	}); err != nil{
-			return nil, err
-	}else {
+	}); err != nil {
+		return nil, err
+	} else {
 		ctx := context.Background()
 		_, err := u.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
@@ -108,8 +108,8 @@ func (u userInfo) list(key string) ([]*git.User, error) {
 func NewUserGenerator(client *git.Client, pageClient *pager.Clientset) syncer.Generator {
 	return &userInfo{
 		ClientSet: &syncer.ClientSet{
-			PagerClient: pageClient,
-			GitlabClient:   client,
+			PagerClient:  pageClient,
+			GitlabClient: client,
 		},
 	}
 }

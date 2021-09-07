@@ -22,7 +22,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	if project, err := p.GetByName(workspace.Name); err == nil || errors.IsNotFound(err) {
 		return project, nil
 	}
-	resp, err := p.HarborClient.ProjectApi.CreateProject(p.ctx, harbor2.ProjectReq{
+	resp, err := p.HarborClient.ProjectApi.CreateProject(harbor2.ProjectReq{
 		ProjectName: workspace.Name,
 		Metadata: &harbor2.ProjectMetadata{
 			Public: "true",
@@ -45,7 +45,7 @@ func (p projectInfo) Delete(obj interface{}) error {
 }
 
 func (p projectInfo) GetByName(name string) (interface{}, error) {
-	project, resp, err := p.HarborClient.ProjectApi.GetProject(p.ctx, name, &harbor2.ProjectApiGetProjectOpts{})
+	project, resp, err := p.HarborClient.ProjectApi.GetProject(name, &harbor2.ProjectApiGetProjectOpts{})
 	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (p projectInfo) GetByName(name string) (interface{}, error) {
 }
 
 func (p projectInfo) GetByID(id int) (interface{}, error) {
-	project, resp, err := p.HarborClient.ProjectApi.GetProject(p.ctx, strconv.Itoa(id), &harbor2.ProjectApiGetProjectOpts{})
+	project, resp, err := p.HarborClient.ProjectApi.GetProject(strconv.Itoa(id), &harbor2.ProjectApiGetProjectOpts{})
 	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
@@ -68,9 +68,8 @@ func (p projectInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-func NewHarborProjectGenerator(name, group string, projectClient *harbor2.APIClient, ctx context.Context) syncer.Generator {
+func NewHarborProjectGenerator(name, group string, projectClient *harbor2.APIClient) syncer.Generator {
 	return &projectInfo{
-		ctx: ctx,
 		ClientSet: &syncer.ClientSet{
 			HarborClient: projectClient,
 		},

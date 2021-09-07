@@ -36,11 +36,11 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	application := obj.(*v1beta1.Application)
 	var pip models.Pipelines
 	appType := application.Labels["appType"]
-	if appType == ""{
+	if appType == "" {
 		appType = "java"
 	}
-	for _, pipe := range p.Config.Devops.Pipelines{
-		if appType == pipe.Pipeline{
+	for _, pipe := range p.Config.Devops.Pipelines {
+		if appType == pipe.Pipeline {
 			pip = pipe
 		}
 	}
@@ -110,18 +110,18 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 		TemplateName:                             git.String(pip.Template),
 		//TemplateProjectID:                        git.Int(TemplateProjectID),
 		//UseCustomTemplate:                        git.Bool(UseCustomTemplate),
-		GroupWithProjectTemplatesID:              git.Int(GroupWithProjectTemplatesID),
-		PackagesEnabled:                          nil,
-		ServiceDeskEnabled:                       nil,
-		AutocloseReferencedIssues:                nil,
-		SuggestionCommitMessage:                  nil,
-		IssuesTemplate:                           git.String(IssuesTemplate),
-		MergeRequestsTemplate:                    git.String(MergeRequestsTemplate),
-		IssuesEnabled:                            git.Bool(true),
-		MergeRequestsEnabled:                     git.Bool(true),
-		JobsEnabled:                              nil,
-		WikiEnabled:                              nil,
-		SnippetsEnabled:                          nil,
+		GroupWithProjectTemplatesID: git.Int(GroupWithProjectTemplatesID),
+		PackagesEnabled:             nil,
+		ServiceDeskEnabled:          nil,
+		AutocloseReferencedIssues:   nil,
+		SuggestionCommitMessage:     nil,
+		IssuesTemplate:              git.String(IssuesTemplate),
+		MergeRequestsTemplate:       git.String(MergeRequestsTemplate),
+		IssuesEnabled:               git.Bool(true),
+		MergeRequestsEnabled:        git.Bool(true),
+		JobsEnabled:                 nil,
+		WikiEnabled:                 nil,
+		SnippetsEnabled:             nil,
 	}); err != nil {
 		return nil, err
 	} else {
@@ -249,7 +249,7 @@ func (p projectInfo) list(key string) ([]*git.Project, error) {
 	}
 }
 
-func NewProjectGenerator(name, group string, config *models.Config, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
+func NewGitLabProjectGenerator(name, group string, config *models.Config, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
 
 	return &projectInfo{
 		projectName:      name,
