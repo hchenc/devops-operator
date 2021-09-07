@@ -14,9 +14,10 @@ import (
 )
 
 type userInfo struct {
-	username string
-	password string
-	*syncer.ClientSet
+	username     string
+	password     string
+	gitlabClient *git.Client
+	pagerClient  *pager.Clientset
 }
 
 func (u userInfo) Create(obj interface{}) (interface{}, error) {
@@ -27,7 +28,7 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 	} else if !errors.IsNotFound(err) {
 		return nil, err
 	}
-	if gitlabUser, _, err := u.GitlabClient.Users.CreateUser(&git.CreateUserOptions{
+	if gitlabUser, _, err := u.gitlabClient.Users.CreateUser(&git.CreateUserOptions{
 		Email:               git.String(user.Spec.Email),
 		ResetPassword:       git.Bool(true),
 		ForceRandomPassword: nil,
@@ -53,7 +54,7 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 		return nil, err
 	} else {
 		ctx := context.Background()
-		_, err := u.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
+		_, err := u.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "user-" + user.Name,
 			},
@@ -89,7 +90,7 @@ func (u userInfo) List(key string) (interface{}, error) {
 }
 
 func (u userInfo) list(key string) ([]*git.User, error) {
-	users, resp, err := u.GitlabClient.Users.ListUsers(&git.ListUsersOptions{
+	users, resp, err := u.gitlabClient.Users.ListUsers(&git.ListUsersOptions{
 		Username: git.String(key),
 	})
 	defer resp.Body.Close()
@@ -107,9 +108,7 @@ func (u userInfo) list(key string) ([]*git.User, error) {
 
 func NewUserGenerator(client *git.Client, pageClient *pager.Clientset) syncer.Generator {
 	return &userInfo{
-		ClientSet: &syncer.ClientSet{
-			PagerClient:  pageClient,
-			GitlabClient: client,
-		},
+		pagerClient:  pageClient,
+		gitlabClient: client,
 	}
 }

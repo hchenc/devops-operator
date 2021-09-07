@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/syncer"
-	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,7 +11,7 @@ import (
 )
 
 type rolebindingInfo struct {
-	*syncer.ClientSet
+	kubeclient *kubernetes.Clientset
 }
 
 func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
@@ -26,7 +25,7 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 		"smoking": workspaceName + "-smoking",
 	}
 	for _, namespace := range candidates {
-		_, err := r.Client.RbacV1().RoleBindings(namespace).Get(ctx, userName+"-operator", metav1.GetOptions{})
+		_, err := r.kubeclient.RbacV1().RoleBindings(namespace).Get(ctx, userName+"-operator", metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			rolebindings := &v1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
@@ -49,7 +48,7 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 					Name:     "operator",
 				},
 			}
-			_, err := r.Client.RbacV1().RoleBindings(namespace).Create(ctx, rolebindings, metav1.CreateOptions{})
+			_, err := r.kubeclient.RbacV1().RoleBindings(namespace).Create(ctx, rolebindings, metav1.CreateOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -82,11 +81,8 @@ func (r rolebindingInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-func NewRolebindingGenerator(pagerClient *pager.Clientset, clientset *kubernetes.Clientset) syncer.Generator {
+func NewRolebindingGenerator(kubeclient *kubernetes.Clientset) syncer.Generator {
 	return rolebindingInfo{
-		&syncer.ClientSet{
-			PagerClient: pagerClient,
-			Client:      clientset,
-		},
+		kubeclient: kubeclient,
 	}
 }

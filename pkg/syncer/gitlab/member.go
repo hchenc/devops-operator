@@ -12,7 +12,8 @@ import (
 )
 
 type memberInfo struct {
-	*syncer.ClientSet
+	gitlabClient *git.Client
+	pagerClient  *pager.Clientset
 }
 
 func (m memberInfo) Create(obj interface{}) (interface{}, error) {
@@ -22,13 +23,13 @@ func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 
 	ctx := context.Background()
 
-	groupRecord, _ := m.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "workspace-"+groupName, v1.GetOptions{})
+	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "workspace-"+groupName, v1.GetOptions{})
 
-	userRecord, _ := m.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "user-"+userName, v1.GetOptions{})
+	userRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "user-"+userName, v1.GetOptions{})
 
 	uid, _ := strconv.Atoi(userRecord.Spec.MessageID)
 
-	if members, resp, err := m.GitlabClient.GroupMembers.AddGroupMember(groupRecord.Spec.MessageID, &git.AddGroupMemberOptions{
+	if members, resp, err := m.gitlabClient.GroupMembers.AddGroupMember(groupRecord.Spec.MessageID, &git.AddGroupMemberOptions{
 		UserID:      git.Int(uid),
 		AccessLevel: git.AccessLevel(git.DeveloperPermissions),
 		ExpiresAt:   nil,
@@ -37,7 +38,7 @@ func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 	} else {
 		defer resp.Body.Close()
 		ctx := context.Background()
-		_, err := m.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
+		_, err := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "member-" + members.Name,
 			},
@@ -73,9 +74,7 @@ func (m memberInfo) List(key string) (interface{}, error) {
 
 func NewMemberGenerator(gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
 	return &memberInfo{
-		&syncer.ClientSet{
-			GitlabClient: gitlabClient,
-			PagerClient:  pagerClient,
-		},
+		gitlabClient: gitlabClient,
+		pagerClient:  pagerClient,
 	}
 }

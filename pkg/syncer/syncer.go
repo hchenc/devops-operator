@@ -1,31 +1,8 @@
 package syncer
 
-import (
-	app "github.com/hchenc/application/pkg/client/clientset/versioned"
-	"github.com/hchenc/devops-operator/pkg/models"
-	harbor "github.com/hchenc/go-harbor"
-	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
-	git "github.com/xanzy/go-gitlab"
-	"k8s.io/client-go/kubernetes"
-)
-
 const (
 	DEVOPS_NAMESPACE = "devops-system"
 )
-
-type ClientSet struct {
-	Client *kubernetes.Clientset
-
-	AppClient *app.Clientset
-
-	PagerClient *pager.Clientset
-
-	GitlabClient *git.Client
-
-	HarborClient *harbor.APIClient
-
-	Config *models.Config
-}
 
 type GenerateService interface {
 	//add obj to target service

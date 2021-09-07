@@ -6,6 +6,7 @@ import (
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/hchenc/pager/pkg/apis/devops/v1alpha1"
+	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	git "github.com/xanzy/go-gitlab"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,8 +21,9 @@ var (
 )
 
 type groupInfo struct {
-	*syncer.ClientSet
-	groupName string
+	gitlabClient *git.Client
+	pagerClient  *pager.Clientset
+	groupName    string
 }
 
 func (g groupInfo) Create(obj interface{}) (interface{}, error) {
@@ -34,7 +36,7 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 	}
 	name := git.String(workspace.Name)
 	description := git.String(workspace.GetAnnotations()["kubesphere.io/description"])
-	if group, _, err := g.GitlabClient.Groups.CreateGroup(&git.CreateGroupOptions{
+	if group, _, err := g.gitlabClient.Groups.CreateGroup(&git.CreateGroupOptions{
 		Name:                           name,
 		Path:                           name,
 		Description:                    description,
@@ -57,7 +59,7 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 		return nil, err
 	} else {
 		ctx := context.Background()
-		_, err := g.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
+		_, err := g.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "workspace-" + workspace.Name,
 			},
@@ -97,7 +99,7 @@ func (g groupInfo) List(key string) (interface{}, error) {
 }
 
 func (g groupInfo) list(key string) ([]*git.Group, error) {
-	groups, resp, err := g.GitlabClient.Groups.ListGroups(&git.ListGroupsOptions{
+	groups, resp, err := g.gitlabClient.Groups.ListGroups(&git.ListGroupsOptions{
 		Search: git.String(key),
 	})
 	defer resp.Body.Close()
@@ -113,11 +115,10 @@ func (g groupInfo) list(key string) ([]*git.Group, error) {
 	}
 }
 
-func NewGroupGenerator(name string, gitlabClient *git.Client) syncer.Generator {
+func NewGroupGenerator(name string, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
 	return &groupInfo{
-		groupName: name,
-		ClientSet: &syncer.ClientSet{
-			GitlabClient: gitlabClient,
-		},
+		groupName:    name,
+		gitlabClient: gitlabClient,
+		pagerClient:  pagerClient,
 	}
 }

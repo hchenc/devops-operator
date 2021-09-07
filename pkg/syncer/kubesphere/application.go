@@ -10,7 +10,7 @@ import (
 )
 
 type applicationInfo struct {
-	*syncer.ClientSet
+	appClient *versioned.Clientset
 }
 
 func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
@@ -27,7 +27,7 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 			continue
 		}
 		application.Namespace = k
-		_, err := a.AppClient.AppV1beta1().Applications(k).Create(ctx, application, v1.CreateOptions{})
+		_, err := a.appClient.AppV1beta1().Applications(k).Create(ctx, application, v1.CreateOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -55,10 +55,8 @@ func (a applicationInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-func NewApplicationGenerator(clientset *versioned.Clientset) syncer.Generator {
+func NewApplicationGenerator(appClient *versioned.Clientset) syncer.Generator {
 	return applicationInfo{
-		&syncer.ClientSet{
-			AppClient: clientset,
-		},
+		appClient: appClient,
 	}
 }

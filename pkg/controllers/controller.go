@@ -3,13 +3,9 @@ package controller
 import (
 	"context"
 	"errors"
+	"os"
+
 	app "github.com/hchenc/application/pkg/client/clientset/versioned"
-	"github.com/hchenc/devops-operator/pkg/models"
-	"github.com/hchenc/devops-operator/pkg/syncer"
-	"github.com/hchenc/devops-operator/pkg/syncer/gitlab"
-	"github.com/hchenc/devops-operator/pkg/syncer/harbor"
-	"github.com/hchenc/devops-operator/pkg/syncer/kubesphere"
-	"github.com/hchenc/devops-operator/pkg/utils"
 	harbor2 "github.com/hchenc/go-harbor"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
@@ -17,8 +13,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/hchenc/devops-operator/pkg/models"
+	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/syncer/gitlab"
+	"github.com/hchenc/devops-operator/pkg/syncer/harbor"
+	"github.com/hchenc/devops-operator/pkg/syncer/kubesphere"
+	"github.com/hchenc/devops-operator/pkg/utils"
 )
 
 var (
@@ -49,6 +51,55 @@ var (
 	harborGeneratorService      syncer.GenerateService
 )
 
+type ClientSet struct {
+	config *models.Config
+
+	kubeclient *kubernetes.Clientset
+
+	appClient *app.Clientset
+
+	pagerClient *pager.Clientset
+
+	gitlabClient *git.Client
+
+	harborClient *harbor2.APIClient
+}
+
+func (cc *ClientSet) Initial(restConfig *rest.Config, devopsConfig *models.Config) {
+
+	cc.config = devopsConfig
+
+	cc.kubeclient = kubernetes.NewForConfigOrDie(restConfig)
+
+	cc.appClient = app.NewForConfigOrDie(restConfig)
+
+	cc.pagerClient = pager.NewForConfigOrDie(restConfig)
+
+	var err error
+	url := "http://" + devopsConfig.Devops.Gitlab.Host + ":" + devopsConfig.Devops.Gitlab.Port
+	if devopsConfig.Devops.Gitlab.Token != "" {
+		cc.gitlabClient, err = git.NewClient(devopsConfig.Devops.Gitlab.Token, git.WithBaseURL(url))
+		if err != nil {
+			panic(err)
+		}
+	} else if devopsConfig.Devops.Gitlab.User != "" && devopsConfig.Devops.Gitlab.Password != "" {
+		cc.gitlabClient, err = git.NewBasicAuthClient(devopsConfig.Devops.Gitlab.User, devopsConfig.Devops.Gitlab.Password, git.WithBaseURL(url))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		panic(errors.New("gitlab certification not provided"))
+	}
+
+	harborCfg := harbor2.NewConfigurationWithContext(devopsConfig.Devops.Harbor.Host, context.WithValue(context.Background(), harbor2.ContextBasicAuth, harbor2.BasicAuth{
+		UserName: devopsConfig.Devops.Harbor.User,
+		Password: devopsConfig.Devops.Harbor.Password,
+	}))
+
+	cc.harborClient = harbor2.NewAPIClient(harborCfg)
+
+}
+
 type Reconciler interface {
 	SetUp(mgr manager.Manager)
 }
@@ -63,38 +114,8 @@ func RegisterReconciler(name string, f Reconcile) {
 	reconcilersMap[name] = f
 }
 
-type DevopsClientet struct {
-	kubeclient *kubernetes.Clientset
-
-	appClient *app.Clientset
-
-	pagerClient *pager.Clientset
-
-	gitlabClient *git.Client
-}
-
-func (cc *DevopsClientet) Complete(restConfig *rest.Config) {
-
-	cc.kubeclient = kubernetes.NewForConfigOrDie(restConfig)
-
-	cc.appClient = app.NewForConfigOrDie(restConfig)
-
-	cc.pagerClient = pager.NewForConfigOrDie(restConfig)
-
-}
-
 type Controller struct {
-	config *models.Config
-
-	kubeclient *kubernetes.Clientset
-
-	appClient *app.Clientset
-
-	pagerClient *pager.Clientset
-
-	gitlabClient *git.Client
-
-	harborClient *harbor2.APIClient
+	clientset *ClientSet
 
 	reconcilers map[string]Reconciler
 
@@ -107,36 +128,14 @@ func (c *Controller) Reconcile(stopCh <-chan struct{}) {
 	}
 }
 
-func New(cc *DevopsClientet, mgr manager.Manager, config *models.Config) (*Controller, error) {
+func New(cs *ClientSet, mgr manager.Manager) (*Controller, error) {
 	c := &Controller{
-		kubeclient:  cc.kubeclient,
-		appClient:   cc.appClient,
-		pagerClient: cc.pagerClient,
-		mgr:         mgr,
+		clientset: cs,
+		mgr:       mgr,
 	}
 	c.reconcilers = reconcilersMap
 
-	var err error
-	url := "http://" + config.Devops.Gitlab.Host + ":" + config.Devops.Gitlab.Port
-	if config.Devops.Gitlab.Token != "" {
-		c.gitlabClient, err = git.NewClient(config.Devops.Gitlab.Token, git.WithBaseURL(url))
-		if err != nil {
-			return nil, err
-		}
-	} else if config.Devops.Gitlab.User != "" && config.Devops.Gitlab.Password != "" {
-		c.gitlabClient, err = git.NewBasicAuthClient(config.Devops.Gitlab.User, config.Devops.Gitlab.Password, git.WithBaseURL(url))
-	} else {
-		return nil, errors.New("gitlab certification not provided")
-	}
-
-	harborCfg := harbor2.NewConfigurationWithContext(config.Devops.Harbor.Host, context.WithValue(context.Background(), harbor2.ContextBasicAuth, harbor2.BasicAuth{
-		UserName: config.Devops.Harbor.User,
-		Password: config.Devops.Harbor.Password,
-	}))
-
-	c.harborClient = harbor2.NewAPIClient(harborCfg)
-
-	runtime.Must(installGenerator(c.config, cc.pagerClient, cc.kubeclient, cc.appClient, cc.gitlabClient, c.harborClient))
+	runtime.Must(installGenerator(c))
 	runtime.Must(installGeneratorService())
 
 	for _, reconciler := range c.reconcilers {
@@ -146,28 +145,17 @@ func New(cc *DevopsClientet, mgr manager.Manager, config *models.Config) (*Contr
 	return c, nil
 }
 
-//func Install(config *rest.Config) {
-//	client := kubernetes.NewForConfigOrDie(config)
-//
-//	appClient := app.NewForConfigOrDie(config)
-//
-//	pagerClient := pager.NewForConfigOrDie(config)
-//
-//	runtime.Must(installGenerator(pagerClient, client, appClient))
-//	runtime.Must(installGeneratorService())
-//}
+func installGenerator(c *Controller) error {
+	gitlabProjectGenerator = gitlab.NewGitLabProjectGenerator("", "", c.clientset.config, c.clientset.gitlabClient, c.clientset.pagerClient)
+	groupGenerator = gitlab.NewGroupGenerator("", c.clientset.gitlabClient, c.clientset.pagerClient)
+	userGenerator = gitlab.NewUserGenerator(c.clientset.gitlabClient, c.clientset.pagerClient)
+	memberGenerator = gitlab.NewMemberGenerator(c.clientset.gitlabClient, c.clientset.pagerClient)
 
-func installGenerator(config *models.Config, pagerClient *pager.Clientset, clientset *kubernetes.Clientset, appclientset *app.Clientset, gitlabClient *git.Client, harborClient *harbor2.APIClient) error {
-	gitlabProjectGenerator = gitlab.NewGitLabProjectGenerator("", "", config, gitlabClient, pagerClient)
-	groupGenerator = gitlab.NewGroupGenerator("", gitlabClient)
-	userGenerator = gitlab.NewUserGenerator(gitlabClient, pagerClient)
-	memberGenerator = gitlab.NewMemberGenerator(gitlabClient, pagerClient)
+	namespaceGenerator = kubesphere.NewNamespaceGenerator(c.clientset.kubeclient)
+	applicationGenerator = kubesphere.NewApplicationGenerator(c.clientset.appClient)
+	rolebindingGenerator = kubesphere.NewRolebindingGenerator(c.clientset.kubeclient)
 
-	namespaceGenerator = kubesphere.NewNamespaceGenerator(clientset)
-	applicationGenerator = kubesphere.NewApplicationGenerator(appclientset)
-	rolebindingGenerator = kubesphere.NewRolebindingGenerator(pagerClient, clientset)
-
-	harborProjectGenerator = harbor.NewHarborProjectGenerator("", "", harborClient)
+	harborProjectGenerator = harbor.NewHarborProjectGenerator("", "", c.clientset.harborClient)
 
 	return nil
 }

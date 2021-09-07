@@ -29,7 +29,9 @@ type projectInfo struct {
 	projectName      string
 	projectNamespace string
 	gitlabVersion    string
-	*syncer.ClientSet
+	config           *models.Config
+	gitlabClient     *git.Client
+	pagerClient      *pager.Clientset
 }
 
 func (p projectInfo) Create(obj interface{}) (interface{}, error) {
@@ -39,7 +41,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	if appType == "" {
 		appType = "java"
 	}
-	for _, pipe := range p.Config.Devops.Pipelines {
+	for _, pipe := range p.config.Devops.Pipelines {
 		if appType == pipe.Pipeline {
 			pip = pipe
 		}
@@ -55,14 +57,14 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	workspaceName := strings.Split(application.Namespace, "")[0]
 
 	ctx := context.Background()
-	pagerRecord, _ := p.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "workspace-"+workspaceName, v1.GetOptions{})
+	pagerRecord, _ := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "workspace-"+workspaceName, v1.GetOptions{})
 	pagerID, _ := strconv.Atoi(pagerRecord.Spec.MessageID)
 
 	name := git.String(application.Name)
 	groupID := git.Int(pagerID)
 	description := git.String(application.GetAnnotations()["kubesphere.io/description"])
 
-	if project, resp, err := p.GitlabClient.Projects.CreateProject(&git.CreateProjectOptions{
+	if project, resp, err := p.gitlabClient.Projects.CreateProject(&git.CreateProjectOptions{
 		Name:                                name,
 		Path:                                name,
 		NamespaceID:                         groupID,
@@ -127,7 +129,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	} else {
 		defer resp.Body.Close()
 		ctx := context.Background()
-		_, err := p.PagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
+		_, err := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "application-" + project.Name,
 			},
@@ -233,7 +235,7 @@ func (p projectInfo) List(key string) (interface{}, error) {
 }
 
 func (p projectInfo) list(key string) ([]*git.Project, error) {
-	projects, resp, err := p.GitlabClient.Projects.ListProjects(&git.ListProjectsOptions{
+	projects, resp, err := p.gitlabClient.Projects.ListProjects(&git.ListProjectsOptions{
 		Search: git.String(key),
 	})
 	defer resp.Body.Close()
@@ -250,14 +252,11 @@ func (p projectInfo) list(key string) ([]*git.Project, error) {
 }
 
 func NewGitLabProjectGenerator(name, group string, config *models.Config, gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
-
 	return &projectInfo{
 		projectName:      name,
 		projectNamespace: group,
-		ClientSet: &syncer.ClientSet{
-			PagerClient:  pagerClient,
-			GitlabClient: gitlabClient,
-			Config:       config,
-		},
+		pagerClient:      pagerClient,
+		gitlabClient:     gitlabClient,
+		config:           config,
 	}
 }

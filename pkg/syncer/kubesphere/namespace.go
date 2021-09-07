@@ -12,7 +12,7 @@ import (
 )
 
 type namespaceInfo struct {
-	*syncer.ClientSet
+	client *kubernetes.Clientset
 }
 
 func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
@@ -27,7 +27,7 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 		"smoking": name + "-smoking",
 	}
 	for k, namespace := range candidates {
-		_, err := n.Client.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		_, err := n.client.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			continue
 		} else {
@@ -42,7 +42,7 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 
 	namespaces := assembleNamespace(workspace, name, creator, candidates)
 	for _, namespace := range namespaces {
-		_, err := n.Client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+		_, err := n.client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func (n namespaceInfo) Delete(obj interface{}) error {
 func (n namespaceInfo) GetByName(key string) (interface{}, error) {
 	ctx := context.Background()
 
-	ns, err := n.Client.CoreV1().Namespaces().Get(ctx, key, metav1.GetOptions{})
+	ns, err := n.client.CoreV1().Namespaces().Get(ctx, key, metav1.GetOptions{})
 	return ns, err
 }
 
@@ -103,10 +103,8 @@ func (n namespaceInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-func NewNamespaceGenerator(clientset *kubernetes.Clientset) syncer.Generator {
+func NewNamespaceGenerator(client *kubernetes.Clientset) syncer.Generator {
 	return &namespaceInfo{
-		&syncer.ClientSet{
-			Client: clientset,
-		},
+		client: client,
 	}
 }

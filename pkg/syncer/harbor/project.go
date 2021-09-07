@@ -1,7 +1,6 @@
 package harbor
 
 import (
-	"context"
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	harbor2 "github.com/hchenc/go-harbor"
@@ -10,11 +9,10 @@ import (
 )
 
 type projectInfo struct {
-	*syncer.ClientSet
-	ctx      context.Context
-	username string
-	password string
-	host     string
+	harborClient *harbor2.APIClient
+	username     string
+	password     string
+	host         string
 }
 
 func (p projectInfo) Create(obj interface{}) (interface{}, error) {
@@ -22,7 +20,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	if project, err := p.GetByName(workspace.Name); err == nil || errors.IsNotFound(err) {
 		return project, nil
 	}
-	resp, err := p.HarborClient.ProjectApi.CreateProject(harbor2.ProjectReq{
+	resp, err := p.harborClient.ProjectApi.CreateProject(harbor2.ProjectReq{
 		ProjectName: workspace.Name,
 		Metadata: &harbor2.ProjectMetadata{
 			Public: "true",
@@ -45,7 +43,7 @@ func (p projectInfo) Delete(obj interface{}) error {
 }
 
 func (p projectInfo) GetByName(name string) (interface{}, error) {
-	project, resp, err := p.HarborClient.ProjectApi.GetProject(name, &harbor2.ProjectApiGetProjectOpts{})
+	project, resp, err := p.harborClient.ProjectApi.GetProject(name, &harbor2.ProjectApiGetProjectOpts{})
 	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
@@ -55,7 +53,7 @@ func (p projectInfo) GetByName(name string) (interface{}, error) {
 }
 
 func (p projectInfo) GetByID(id int) (interface{}, error) {
-	project, resp, err := p.HarborClient.ProjectApi.GetProject(strconv.Itoa(id), &harbor2.ProjectApiGetProjectOpts{})
+	project, resp, err := p.harborClient.ProjectApi.GetProject(strconv.Itoa(id), &harbor2.ProjectApiGetProjectOpts{})
 	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
@@ -68,10 +66,8 @@ func (p projectInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-func NewHarborProjectGenerator(name, group string, projectClient *harbor2.APIClient) syncer.Generator {
+func NewHarborProjectGenerator(name, group string, harborClient *harbor2.APIClient) syncer.Generator {
 	return &projectInfo{
-		ClientSet: &syncer.ClientSet{
-			HarborClient: projectClient,
-		},
+		harborClient: harborClient,
 	}
 }

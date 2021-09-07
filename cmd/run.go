@@ -52,8 +52,8 @@ var runCmd = &cobra.Command{
 			panic(err.Error())
 		}
 
-		dc := &controller.DevopsClientet{}
-		dc.Complete(config)
+		cs := &controller.ClientSet{}
+		cs.Initial(config, pipelineConfig)
 		//setup controller through config instance
 		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:             scheme,
@@ -62,7 +62,7 @@ var runCmd = &cobra.Command{
 			LeaderElection:     enableLeaderElection,
 			LeaderElectionID:   "5e352c21.efunds.com",
 		})
-		c, _ := controller.New(dc, mgr, pipelineConfig)
+		c, _ := controller.New(cs, mgr)
 		//run controller
 		fmt.Println("run called")
 		c.Reconcile(ctrl.SetupSignalHandler())
