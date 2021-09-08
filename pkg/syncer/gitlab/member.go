@@ -21,13 +21,19 @@ func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 	groupName := rolebinding.Labels["kubesphere.io/workspace"]
 	userName := rolebinding.Subjects[0].Name
 
+
 	ctx := context.Background()
 
-	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "workspace-"+groupName, v1.GetOptions{})
+	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(ctx, "workspace-"+groupName, v1.GetOptions{})
 
-	userRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Get(ctx, "user-"+userName, v1.GetOptions{})
+	userRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(ctx, "user-"+userName, v1.GetOptions{})
 
 	uid, _ := strconv.Atoi(userRecord.Spec.MessageID)
+
+	if members, _, _ := m.gitlabClient.GroupMembers.GetGroupMember(groupRecord.Spec.MessageID, uid); members != nil {
+		return nil, nil
+	}
+
 
 	if members, resp, err := m.gitlabClient.GroupMembers.AddGroupMember(groupRecord.Spec.MessageID, &git.AddGroupMemberOptions{
 		UserID:      git.Int(uid),
@@ -38,7 +44,7 @@ func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 	} else {
 		defer resp.Body.Close()
 		ctx := context.Background()
-		_, err := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
+		_, err := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "member-" + members.Name,
 			},

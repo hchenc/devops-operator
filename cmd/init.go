@@ -85,17 +85,17 @@ func setUp() error {
 		{
 			Pipeline: "java",
 			Template: "Spring",
-			Ci:       "devops/devops/-/raw/master/java.yml",
+			Ci:       "http://gitlab.hchenc.com/devops/devops/-/raw/main/java.yaml",
 		},
 		{
 			Pipeline: "Python",
 			Template: "",
-			Ci:       "devops/devops/-/raw/master/python.yml",
+			Ci:       "http://gitlab.hchenc.com/devops/devops/-/raw/master/python.yml",
 		},
 		{
 			Pipeline: "nodejs",
 			Template: "",
-			Ci:       "devops/devops/-/raw/master/nodejs.yml",
+			Ci:       "http://gitlab.hchenc.com/devops/devops/-/raw/master/nodejs.yml",
 		},
 	}
 	gitClient, _ := pipeline.InstallGitLabClient(config.Devops.Gitlab.Host,config.Devops.Gitlab.Port,config.Devops.Gitlab.User, config.Devops.Gitlab.Password, "")

@@ -4,13 +4,14 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
-	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 )
 
@@ -45,20 +46,42 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 	return reconcile.Result{}, nil
 }
 
+type userPredicate struct {
+}
+
+func (r userPredicate) Create(e event.CreateEvent) bool {
+	name := e.Meta.GetName()
+	if strings.Contains(name, "system") || strings.Contains(name, "admin") {
+		return false
+	} else {
+		return true
+	}
+}
+func (r userPredicate) Update(e event.UpdateEvent) bool {
+	//if pod label no changes or add labels, ignore
+	return false
+}
+func (r userPredicate) Delete(e event.DeleteEvent) bool {
+	return false
+
+}
+func (r userPredicate) Generic(e event.GenericEvent) bool {
+	return false
+}
+
 func (u *UserOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&iamv1alpha2.User{}).
+		WithEventFilter(&userPredicate{}).
 		Complete(u)
 }
 
 func SetUpUserReconcile(mgr manager.Manager) {
-	_ = v1alpha2.AddToScheme(mgr.GetScheme())
-
-	if err := (&ProjectOperatorReconciler{
+	if err := (&UserOperatorReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("UserToUser"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		log.Fatalf("unable to create user controller")
+		log.Fatalf("unable to create user controller",err)
 	}
 }

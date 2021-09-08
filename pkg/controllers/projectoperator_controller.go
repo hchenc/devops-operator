@@ -7,8 +7,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 
 	"github.com/hchenc/application/pkg/apis/app/v1beta1"
@@ -53,16 +55,37 @@ func (r *ProjectOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 	return reconcile.Result{}, nil
 }
 
+type projectPredicate struct {
+}
+
+func (r projectPredicate) Create(e event.CreateEvent) bool {
+	name := e.Meta.GetName()
+	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
+		return false
+	} else {
+		return true
+	}
+}
+func (r projectPredicate) Update(e event.UpdateEvent) bool {
+	//if pod label no changes or add labels, ignore
+	return false
+}
+func (r projectPredicate) Delete(e event.DeleteEvent) bool {
+	return false
+
+}
+func (r projectPredicate) Generic(e event.GenericEvent) bool {
+	return false
+}
+
 func (r *ProjectOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1beta1.Application{}).
+		WithEventFilter(&projectPredicate{}).
 		Complete(r)
 }
 
 func SetUpProjectReconcile(mgr manager.Manager) {
-
-	_ = v1beta1.AddToScheme(mgr.GetScheme())
-
 	if err := (&ProjectOperatorReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("AppToProject"),

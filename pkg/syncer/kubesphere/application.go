@@ -22,12 +22,25 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 		"uat":     namespacePrefix + "-uat",
 		"smoking": namespacePrefix + "-smoking",
 	}
-	for k, v := range candidates {
+	for _, v := range candidates {
 		if v == application.Namespace {
 			continue
 		}
-		application.Namespace = k
-		_, err := a.appClient.AppV1beta1().Applications(k).Create(ctx, application, v1.CreateOptions{})
+		if exist, _ := a.appClient.AppV1beta1().Applications(v).Get(ctx,application.Name, v1.GetOptions{});exist != nil {
+			continue
+		}
+		newApplication := &applicationv1beta1.Application{
+			ObjectMeta: v1.ObjectMeta{
+				Name:        application.Name,
+				Namespace:   v,
+				Labels:      application.Labels,
+				Annotations: application.Labels,
+				Finalizers:  application.Finalizers,
+				ClusterName: application.ClusterName,
+			},
+			Spec:application.Spec,
+		}
+		_, err := a.appClient.AppV1beta1().Applications(v).Create(ctx, newApplication, v1.CreateOptions{})
 		if err != nil {
 			return nil, err
 		}

@@ -21,6 +21,10 @@ import (
 	"github.com/hchenc/devops-operator/pkg/syncer/harbor"
 	"github.com/hchenc/devops-operator/pkg/syncer/kubesphere"
 	"github.com/hchenc/devops-operator/pkg/utils"
+
+	application "github.com/hchenc/application/pkg/apis/app/v1beta1"
+	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	workspace "github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 )
 
 var (
@@ -134,6 +138,10 @@ func New(cs *ClientSet, mgr manager.Manager) (*Controller, error) {
 		mgr:       mgr,
 	}
 	c.reconcilers = reconcilersMap
+
+	runtime.Must(workspace.AddToScheme(mgr.GetScheme()))
+	runtime.Must(application.AddToScheme(mgr.GetScheme()))
+	runtime.Must(iamv1alpha2.AddToScheme(mgr.GetScheme()))
 
 	runtime.Must(installGenerator(c))
 	runtime.Must(installGeneratorService())

@@ -5,7 +5,6 @@ import (
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -16,7 +15,7 @@ type rolebindingInfo struct {
 
 func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 	ctx := context.Background()
-	rolebinding := obj.(v1alpha2.WorkspaceRoleBinding)
+	rolebinding := obj.(*v1alpha2.WorkspaceRoleBinding)
 	workspaceName := rolebinding.Labels["kubesphere.io/workspace"]
 	userName := rolebinding.Subjects[0].Name
 	candidates := map[string]string{
@@ -25,8 +24,11 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 		"smoking": workspaceName + "-smoking",
 	}
 	for _, namespace := range candidates {
-		_, err := r.kubeclient.RbacV1().RoleBindings(namespace).Get(ctx, userName+"-operator", metav1.GetOptions{})
-		if errors.IsNotFound(err) {
+		exist, err := r.kubeclient.RbacV1().RoleBindings(namespace).Get(ctx, userName+"-operator", metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		if exist == nil {
 			rolebindings := &v1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      userName + "-operator",
@@ -52,10 +54,8 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-		} else if err == nil {
-			continue
 		} else {
-			return nil, err
+			continue
 		}
 	}
 	return nil, nil

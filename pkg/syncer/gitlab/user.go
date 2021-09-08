@@ -8,7 +8,6 @@ import (
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	git "github.com/xanzy/go-gitlab"
-	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 )
@@ -23,10 +22,11 @@ type userInfo struct {
 func (u userInfo) Create(obj interface{}) (interface{}, error) {
 	user := obj.(*v1alpha2.User)
 	users, err := u.list(user.Name)
+	if err != nil {
+		return nil, err
+	}
 	if len(users) != 0 {
 		return users[0], nil
-	} else if !errors.IsNotFound(err) {
-		return nil, err
 	}
 	if gitlabUser, _, err := u.gitlabClient.Users.CreateUser(&git.CreateUserOptions{
 		Email:               git.String(user.Spec.Email),
@@ -54,7 +54,7 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 		return nil, err
 	} else {
 		ctx := context.Background()
-		_, err := u.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
+		_, err := u.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "user-" + user.Name,
 			},

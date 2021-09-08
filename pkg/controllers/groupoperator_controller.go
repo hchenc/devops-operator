@@ -98,9 +98,6 @@ func (r workspacePredicate) Generic(e event.GenericEvent) bool {
 }
 
 func SetUpGroupReconcile(mgr manager.Manager) {
-
-	_ = v1alpha2.AddToScheme(mgr.GetScheme())
-
 	if err := (&GroupOperatorReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("WorkspaceTemplate"),

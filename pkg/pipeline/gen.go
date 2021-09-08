@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	JAVA_CIFile = `
-variables:
+	JAVA_CIFile = `variables:
   DOCKER_DRIVER: overlay2
   DOCKER_HOST: tcp://localhost:2375
 
@@ -89,6 +88,14 @@ func GenGroup(client *git.Client) (int, error) {
 }
 
 func GenProject(id int,client *git.Client) (int, error) {
+	projects, _, err := client.Projects.ListProjects(&git.ListProjectsOptions{
+		Search: git.String("devops"),
+	})
+	if err != nil {
+		return 0, err
+	} else if projects != nil{
+		return projects[0].ID, nil
+	}
 	project, _, err := client.Projects.CreateProject(&git.CreateProjectOptions{
 		Name:                                git.String("devops"),
 		Path:                                git.String("devops"),
@@ -154,7 +161,7 @@ func GenProject(id int,client *git.Client) (int, error) {
 }
 
 func GenPipeline(id int, client *git.Client) error {
-	_, _, err := client.Commits.CreateCommit(id, &git.CreateCommitOptions{
+	_, resp, err := client.Commits.CreateCommit(id, &git.CreateCommitOptions{
 		Branch:        git.String("main"),
 		CommitMessage: git.String("devops pipeline init"),
 		StartBranch:   nil,
@@ -194,6 +201,9 @@ func GenPipeline(id int, client *git.Client) error {
 		Stats:       nil,
 		Force:       nil,
 	})
+	if resp.StatusCode == 400 {
+		return nil
+	}
 	if err != nil {
 		return err
 	}

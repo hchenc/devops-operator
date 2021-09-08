@@ -1,7 +1,7 @@
 package syncer
 
 const (
-	DEVOPS_NAMESPACE = "devops-system"
+	DevopsNamespace = "devops-system"
 )
 
 type GenerateService interface {

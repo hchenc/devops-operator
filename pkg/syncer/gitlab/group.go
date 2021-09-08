@@ -9,7 +9,6 @@ import (
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	git "github.com/xanzy/go-gitlab"
-	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 )
@@ -29,10 +28,11 @@ type groupInfo struct {
 func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 	workspace := obj.(*v1alpha2.WorkspaceTemplate)
 	groups, err := g.list(workspace.Name)
+	if err != nil {
+		return nil, err
+	}
 	if len(groups) != 0 {
 		return groups[0], nil
-	} else if !errors.IsNotFound(err) {
-		return nil, err
 	}
 	name := git.String(workspace.Name)
 	description := git.String(workspace.GetAnnotations()["kubesphere.io/description"])
@@ -59,7 +59,7 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 		return nil, err
 	} else {
 		ctx := context.Background()
-		_, err := g.pagerClient.DevopsV1alpha1().Pagers(syncer.DEVOPS_NAMESPACE).Create(ctx, &v1alpha1.Pager{
+		_, err := g.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Create(ctx, &v1alpha1.Pager{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "workspace-" + workspace.Name,
 			},
