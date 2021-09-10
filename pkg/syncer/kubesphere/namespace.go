@@ -13,12 +13,10 @@ import (
 
 type namespaceInfo struct {
 	client *kubernetes.Clientset
+	ctx    context.Context
 }
 
 func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
-
-	ctx := context.Background()
-
 	workspace := obj.(*v1alpha2.WorkspaceTemplate)
 	name := workspace.Name
 	candidates := map[string]string{
@@ -26,24 +24,14 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 		"uat":     name + "-uat",
 		"smoking": name + "-smoking",
 	}
-	for k, namespace := range candidates {
-		_, err := n.client.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-		if errors.IsNotFound(err) {
-			continue
-		} else {
-			delete(candidates, k)
-		}
-	}
-	if len(candidates) == 0 {
-		return nil, nil
-	}
-
 	creator := workspace.GetAnnotations()["kubesphere.io/creator"]
 
 	namespaces := assembleNamespace(workspace, name, creator, candidates)
 	for _, namespace := range namespaces {
-		_, err := n.client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
-		if err != nil {
+		_, err := n.client.CoreV1().Namespaces().Create(n.ctx, namespace, metav1.CreateOptions{})
+		if err == nil || errors.IsAlreadyExists(err) {
+			continue
+		} else {
 			return nil, err
 		}
 	}
@@ -103,8 +91,9 @@ func (n namespaceInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-func NewNamespaceGenerator(client *kubernetes.Clientset) syncer.Generator {
+func NewNamespaceGenerator(ctx context.Context, client *kubernetes.Clientset) syncer.Generator {
 	return &namespaceInfo{
 		client: client,
+		ctx:    ctx,
 	}
 }

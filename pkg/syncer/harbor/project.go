@@ -2,6 +2,7 @@ package harbor
 
 import (
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	harbor2 "github.com/hchenc/go-harbor"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,9 +18,6 @@ type projectInfo struct {
 
 func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	workspace := obj.(*v1alpha2.WorkspaceTemplate)
-	if project, err := p.GetByName(workspace.Name); err == nil || errors.IsNotFound(err) {
-		return project, nil
-	}
 	resp, err := p.harborClient.ProjectApi.CreateProject(harbor2.ProjectReq{
 		ProjectName: workspace.Name,
 		Metadata: &harbor2.ProjectMetadata{
@@ -28,10 +26,11 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 		StorageLimit: 0,
 	}, &harbor2.ProjectApiCreateProjectOpts{})
 	defer resp.Body.Close()
-	if err != nil {
+	if err := models.NewConflict(err); err == nil || errors.IsConflict(err) {
+		return resp, nil
+	} else {
 		return nil, err
 	}
-	return nil, nil
 }
 
 func (p projectInfo) Update(objOld interface{}, objNew interface{}) error {

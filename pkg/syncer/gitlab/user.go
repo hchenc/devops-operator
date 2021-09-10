@@ -3,11 +3,13 @@ package gitlab
 import (
 	"context"
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/pager/pkg/apis/devops/v1alpha1"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	git "github.com/xanzy/go-gitlab"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 )
@@ -15,20 +17,16 @@ import (
 type userInfo struct {
 	username     string
 	password     string
-	gitlabClient *git.Client
+	gitlabClient *models.GitlabClient
 	pagerClient  *pager.Clientset
+	logger       *logrus.Logger
+	ctx          context.Context
 }
 
 func (u userInfo) Create(obj interface{}) (interface{}, error) {
 	user := obj.(*v1alpha2.User)
-	users, err := u.list(user.Name)
-	if err != nil {
-		return nil, err
-	}
-	if len(users) != 0 {
-		return users[0], nil
-	}
-	if gitlabUser, _, err := u.gitlabClient.Users.CreateUser(&git.CreateUserOptions{
+
+	gitlabUser, resp, err := u.gitlabClient.Client.Users.CreateUser(&git.CreateUserOptions{
 		Email:               git.String(user.Spec.Email),
 		ResetPassword:       git.Bool(true),
 		ForceRandomPassword: nil,
@@ -50,22 +48,36 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 		External:            nil,
 		PrivateProfile:      nil,
 		Note:                nil,
-	}); err != nil {
-		return nil, err
+	})
+	defer resp.Body.Close()
+	if err := models.NewConflict(err); err == nil || errors.IsConflict(err) {
+		if gitlabUser == nil {
+			if gitlabUsers, err := u.list(user.Name); err != nil {
+				return nil, err
+			} else {
+				gitlabUser = gitlabUsers[0]
+			}
+		}
+		_, err := u.pagerClient.
+			DevopsV1alpha1().
+			Pagers(syncer.DevopsNamespace).
+			Create(u.ctx, &v1alpha1.Pager{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "user-" + user.Name,
+				},
+				Spec: v1alpha1.PagerSpec{
+					MessageID:   strconv.Itoa(gitlabUser.ID),
+					MessageName: gitlabUser.Name,
+					MessageType: user.Kind,
+				},
+			}, v1.CreateOptions{})
+		if err == nil || errors.IsAlreadyExists(err) {
+			return gitlabUser, nil
+		} else {
+			return gitlabUser, err
+		}
 	} else {
-		ctx := context.Background()
-		_, err := u.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Create(ctx, &v1alpha1.Pager{
-			ObjectMeta: v1.ObjectMeta{
-				Name: "user-" + user.Name,
-			},
-			Spec: v1alpha1.PagerSpec{
-				MessageID:   strconv.Itoa(gitlabUser.ID),
-				MessageName: gitlabUser.Name,
-				MessageType: user.Kind,
-			},
-		}, v1.CreateOptions{})
-		return gitlabUser, err
-
+		return nil, err
 	}
 }
 
@@ -90,12 +102,12 @@ func (u userInfo) List(key string) (interface{}, error) {
 }
 
 func (u userInfo) list(key string) ([]*git.User, error) {
-	users, resp, err := u.gitlabClient.Users.ListUsers(&git.ListUsersOptions{
+	users, resp, err := u.gitlabClient.Client.Users.ListUsers(&git.ListUsersOptions{
 		Username: git.String(key),
 	})
 	defer resp.Body.Close()
 	if err != nil {
-		logger.WithFields(logrus.Fields{
+		u.logger.WithFields(logrus.Fields{
 			"event":  "list",
 			"errros": err.Error(),
 			"msg":    resp.Body,
@@ -106,9 +118,10 @@ func (u userInfo) list(key string) ([]*git.User, error) {
 	}
 }
 
-func NewUserGenerator(client *git.Client, pageClient *pager.Clientset) syncer.Generator {
+func NewUserGenerator(ctx context.Context, client *models.GitlabClient, pageClient *pager.Clientset) syncer.Generator {
 	return &userInfo{
 		pagerClient:  pageClient,
 		gitlabClient: client,
+		ctx:          ctx,
 	}
 }

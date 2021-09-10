@@ -55,7 +55,7 @@ func GenGroup(client *git.Client) (int, error) {
 	})
 	defer resp.Body.Close()
 	if err != nil {
-		return 0,err
+		return 0, err
 	}
 	if len(groups) != 0 {
 		return groups[0].ID, nil
@@ -82,18 +82,18 @@ func GenGroup(client *git.Client) (int, error) {
 		ExtraSharedRunnersMinutesLimit: nil,
 	}); err != nil {
 		return 0, err
-	}else {
+	} else {
 		return gitlabGroup.ID, nil
 	}
 }
 
-func GenProject(id int,client *git.Client) (int, error) {
+func GenProject(id int, client *git.Client) (int, error) {
 	projects, _, err := client.Projects.ListProjects(&git.ListProjectsOptions{
 		Search: git.String("devops"),
 	})
 	if err != nil {
 		return 0, err
-	} else if projects != nil{
+	} else if projects != nil {
 		return projects[0].ID, nil
 	}
 	project, _, err := client.Projects.CreateProject(&git.CreateProjectOptions{

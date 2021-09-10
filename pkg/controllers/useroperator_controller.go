@@ -2,8 +2,10 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,12 +38,38 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 		}
 	} else {
 		// create gitlab project
-		_, err := userGeneratorService.Add(user)
+		gitlabUser, err := userGeneratorService.Add(user)
 		if err != nil {
+			if gitlabUser != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "Pager",
+					"name":     "user-" + user.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
+				})
+			} else {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "User",
+					"name":     user.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("user created failed, retry after %d second", RETRYPERIOD),
+				})
+			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
 		}
+		log.Logger.WithFields(logrus.Fields{
+			"event":    "create",
+			"resource": "User",
+			"name":     user.Name,
+			"result":   "success",
+			"message":  "user controller successful",
+		})
 	}
 	return reconcile.Result{}, nil
 }
@@ -82,6 +110,6 @@ func SetUpUserReconcile(mgr manager.Manager) {
 		Log:    ctrl.Log.WithName("UserToUser"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		log.Fatalf("unable to create user controller",err)
+		log.Fatalf("unable to create user controller for", err)
 	}
 }

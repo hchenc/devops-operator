@@ -2,7 +2,9 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -20,13 +22,13 @@ func init() {
 	RegisterReconciler("AppToProject", SetUpProjectReconcile)
 }
 
-type ProjectOperatorReconciler struct {
+type ApplicationOperatorReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
-func (r *ProjectOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.Background()
 	application := &v1beta1.Application{}
 
@@ -37,8 +39,27 @@ func (r *ProjectOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 		}
 	} else {
 		// create gitlab project
-		_, err := projectGeneratorService.Add(application)
+		project, err := projectGeneratorService.Add(application)
 		if err != nil {
+			if project != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "Pager",
+					"name":     "application-" + application.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
+				})
+			} else {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "Project",
+					"name":     application.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("project created failed, retry after %d second", RETRYPERIOD),
+				})
+			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -47,10 +68,26 @@ func (r *ProjectOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 		//sync application to all environment(fat|uat|smoking)
 		_, err = applicationGeneratorService.Add(application)
 		if err != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"event":    "create",
+				"resource": "Application",
+				"name":     application.Name,
+				"result":   "failed",
+				"error":    err.Error(),
+				"message":  fmt.Sprintf("application created failed, retry after %d second", RETRYPERIOD),
+			})
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
 		}
+
+		log.Logger.WithFields(logrus.Fields{
+			"event":    "create",
+			"resource": "Application",
+			"name":     application.Name,
+			"result":   "success",
+			"message":  "application controller successful",
+		})
 	}
 	return reconcile.Result{}, nil
 }
@@ -78,7 +115,7 @@ func (r projectPredicate) Generic(e event.GenericEvent) bool {
 	return false
 }
 
-func (r *ProjectOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ApplicationOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1beta1.Application{}).
 		WithEventFilter(&projectPredicate{}).
@@ -86,11 +123,11 @@ func (r *ProjectOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func SetUpProjectReconcile(mgr manager.Manager) {
-	if err := (&ProjectOperatorReconciler{
+	if err := (&ApplicationOperatorReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("AppToProject"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		log.Fatalf("unable to create project controller")
+		log.Fatalf("unable to create application controller for ", err)
 	}
 }

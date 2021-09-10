@@ -52,9 +52,7 @@ var runCmd = &cobra.Command{
 			panic(err.Error())
 		}
 
-		cs := &controller.ClientSet{}
-		cs.Initial(config, pipelineConfig)
-		//setup controller through config instance
+		cs := models.NewForConfigOrDie(config, pipelineConfig)
 		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:             scheme,
 			MetricsBindAddress: metricsAddr,
@@ -62,8 +60,7 @@ var runCmd = &cobra.Command{
 			LeaderElection:     enableLeaderElection,
 			LeaderElectionID:   "5e352c21.efunds.com",
 		})
-		c, _ := controller.New(cs, mgr)
-		//run controller
+		c := controller.NewControllerOrDie(cs, mgr)
 		fmt.Println("run called")
 		c.Reconcile(ctrl.SetupSignalHandler())
 	},

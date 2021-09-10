@@ -2,8 +2,10 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,8 +39,27 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 		}
 	} else {
 		// add user to group member
-		_, err := memberGeneratorService.Add(rolebinding)
+		member, err := memberGeneratorService.Add(rolebinding)
 		if err != nil {
+			if member != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "Pager",
+					"name":     "member-" + rolebinding.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
+				})
+			} else {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "Member",
+					"name":     rolebinding.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("member created failed, retry after %d second", RETRYPERIOD),
+				})
+			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -46,10 +67,26 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 		//sync group's user to all environment(fat|uat|smoking)
 		_, err = rolebindingGeneratorService.Add(rolebinding)
 		if err != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"event":    "sync",
+				"resource": "Rolebinding",
+				"name":     rolebinding.Name,
+				"result":   "failed",
+				"error":    err.Error(),
+				"message":  fmt.Sprintf("rolebinding sync failed, retry after %d second", RETRYPERIOD),
+			})
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
 		}
+
+		log.Logger.WithFields(logrus.Fields{
+			"event":    "create",
+			"resource": "Rolebinding",
+			"name":     rolebinding.Name,
+			"result":   "success",
+			"message":  "rolebinding controller successful",
+		})
 	}
 	return reconcile.Result{}, nil
 }
@@ -90,6 +127,6 @@ func SetUpRolebindingReconcile(mgr manager.Manager) {
 		Log:    ctrl.Log.WithName("RolebindingToMember"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		log.Fatalf("unable to create rolebinding controller", err)
+		log.Fatalf("unable to create rolebinding controller for ", err)
 	}
 }

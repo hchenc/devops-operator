@@ -98,19 +98,19 @@ func setUp() error {
 			Ci:       "http://gitlab.hchenc.com/devops/devops/-/raw/master/nodejs.yml",
 		},
 	}
-	gitClient, _ := pipeline.InstallGitLabClient(config.Devops.Gitlab.Host,config.Devops.Gitlab.Port,config.Devops.Gitlab.User, config.Devops.Gitlab.Password, "")
+	gitClient, _ := pipeline.InstallGitLabClient(config.Devops.Gitlab.Host, config.Devops.Gitlab.Port, config.Devops.Gitlab.User, config.Devops.Gitlab.Password, "")
 
 	id, err := pipeline.GenGroup(gitClient)
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 
 	id, err = pipeline.GenProject(id, gitClient)
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 
-	if err := pipeline.GenPipeline(id, gitClient); err != nil{
+	if err := pipeline.GenPipeline(id, gitClient); err != nil {
 		panic(err)
 	}
 

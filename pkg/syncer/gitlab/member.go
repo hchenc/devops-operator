@@ -3,17 +3,23 @@ package gitlab
 import (
 	"context"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/hchenc/pager/pkg/apis/devops/v1alpha1"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
+	"github.com/sirupsen/logrus"
 	git "github.com/xanzy/go-gitlab"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 )
 
 type memberInfo struct {
-	gitlabClient *git.Client
+	gitlabClient *models.GitlabClient
 	pagerClient  *pager.Clientset
+	logger       *logrus.Logger
+	ctx          context.Context
 }
 
 func (m memberInfo) Create(obj interface{}) (interface{}, error) {
@@ -21,41 +27,48 @@ func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 	groupName := rolebinding.Labels["kubesphere.io/workspace"]
 	userName := rolebinding.Subjects[0].Name
 
+	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(m.ctx, "workspace-"+groupName, v1.GetOptions{})
 
-	ctx := context.Background()
-
-	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(ctx, "workspace-"+groupName, v1.GetOptions{})
-
-	userRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(ctx, "user-"+userName, v1.GetOptions{})
+	userRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(m.ctx, "user-"+userName, v1.GetOptions{})
 
 	uid, _ := strconv.Atoi(userRecord.Spec.MessageID)
 
-	if members, _, _ := m.gitlabClient.GroupMembers.GetGroupMember(groupRecord.Spec.MessageID, uid); members != nil {
-		return nil, nil
-	}
-
-
-	if members, resp, err := m.gitlabClient.GroupMembers.AddGroupMember(groupRecord.Spec.MessageID, &git.AddGroupMemberOptions{
+	member, resp, err := m.gitlabClient.Client.GroupMembers.AddGroupMember(groupRecord.Spec.MessageID, &git.AddGroupMemberOptions{
 		UserID:      git.Int(uid),
 		AccessLevel: git.AccessLevel(git.DeveloperPermissions),
 		ExpiresAt:   nil,
-	}); err != nil {
-		return nil, err
-	} else {
-		defer resp.Body.Close()
-		ctx := context.Background()
-		_, err := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Create(ctx, &v1alpha1.Pager{
-			ObjectMeta: v1.ObjectMeta{
-				Name: "member-" + members.Name,
-			},
-			Spec: v1alpha1.PagerSpec{
-				MessageID:   strconv.Itoa(members.ID),
-				MessageName: members.Name,
-				MessageType: rolebinding.Kind,
-			},
-		}, v1.CreateOptions{})
-		return members, err
+	})
+	defer resp.Body.Close()
+
+	if err := models.NewConflict(err); err == nil || errors.IsConflict(err) {
+		if member == nil {
+			var err error
+			member, resp, err = m.gitlabClient.Client.GroupMembers.GetGroupMember(groupRecord.Spec.MessageID, uid)
+			defer resp.Body.Close()
+			if err != nil {
+				return nil, err
+			}
+		}
+		_, err := m.pagerClient.
+			DevopsV1alpha1().
+			Pagers(syncer.DevopsNamespace).
+			Create(m.ctx, &v1alpha1.Pager{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "member-" + member.Name,
+				},
+				Spec: v1alpha1.PagerSpec{
+					MessageID:   strconv.Itoa(member.ID),
+					MessageName: member.Name,
+					MessageType: rolebinding.Kind,
+				},
+			}, v1.CreateOptions{})
+		if err == nil || errors.IsAlreadyExists(err) {
+			return member, nil
+		} else {
+			return member, err
+		}
 	}
+	return nil, err
 }
 
 func (m memberInfo) Update(objOld interface{}, objNew interface{}) error {
@@ -78,9 +91,18 @@ func (m memberInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-func NewMemberGenerator(gitlabClient *git.Client, pagerClient *pager.Clientset) syncer.Generator {
+func (m memberInfo) list(key string) (interface{}, error) {
+	panic("implement me")
+}
+
+func NewMemberGenerator(ctx context.Context, gitlabClient *models.GitlabClient, pagerClient *pager.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "gitlab.member",
+	})
 	return &memberInfo{
 		gitlabClient: gitlabClient,
 		pagerClient:  pagerClient,
+		logger:       logger,
+		ctx:          ctx,
 	}
 }

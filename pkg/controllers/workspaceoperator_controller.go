@@ -2,8 +2,10 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -24,13 +26,13 @@ func init() {
 	RegisterReconciler("WorkspaceToGroup", SetUpGroupReconcile)
 }
 
-type GroupOperatorReconciler struct {
+type WorkspaceOperatorReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
-func (g *GroupOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.Background()
 	workspaceTemplate := &v1alpha2.WorkspaceTemplate{}
 
@@ -41,8 +43,27 @@ func (g *GroupOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 		}
 	} else {
 		// create gitlab group
-		_, err := groupGeneratorService.Add(workspaceTemplate)
+		gitlabGroup, err := groupGeneratorService.Add(workspaceTemplate)
 		if err != nil {
+			if gitlabGroup != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "Pager",
+					"name":     "workspace-" + workspaceTemplate.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
+				})
+			} else {
+				log.Logger.WithFields(logrus.Fields{
+					"event":    "create",
+					"resource": "Group",
+					"name":     workspaceTemplate.Name,
+					"result":   "failed",
+					"error":    err.Error(),
+					"message":  fmt.Sprintf("group created failed, retry after %d second", RETRYPERIOD),
+				})
+			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -51,6 +72,14 @@ func (g *GroupOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 		// create KubeSphere's project(namespace) as environment
 		_, err = namespaceGeneratorService.Add(workspaceTemplate)
 		if err != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"event":    "create",
+				"resource": "Namespace",
+				"name":     workspaceTemplate.Name,
+				"result":   "failed",
+				"error":    err.Error(),
+				"message":  fmt.Sprintf("namespace created failed, retry after %d second", RETRYPERIOD),
+			})
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -59,15 +88,30 @@ func (g *GroupOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 		// create harbor's project
 		_, err = harborGeneratorService.Add(workspaceTemplate)
 		if err != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"event":    "create",
+				"resource": "Harbor",
+				"name":     workspaceTemplate.Name,
+				"result":   "failed",
+				"error":    err.Error(),
+				"message":  fmt.Sprintf("namespace create failed, retry after %d second", RETRYPERIOD),
+			})
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
 		}
+		log.Logger.WithFields(logrus.Fields{
+			"event":    "create",
+			"resource": "Workspace",
+			"name":     workspaceTemplate.Name,
+			"result":   "success",
+			"message":  "workspace controller successful",
+		})
 	}
 	return reconcile.Result{}, nil
 }
 
-func (g *GroupOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (g *WorkspaceOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha2.WorkspaceTemplate{}).
 		WithEventFilter(&workspacePredicate{}).
@@ -98,11 +142,11 @@ func (r workspacePredicate) Generic(e event.GenericEvent) bool {
 }
 
 func SetUpGroupReconcile(mgr manager.Manager) {
-	if err := (&GroupOperatorReconciler{
+	if err := (&WorkspaceOperatorReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("WorkspaceTemplate"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		log.Fatalf("unable to create group controller")
+		log.Fatalf("unable to create workspace controller for", err)
 	}
 }

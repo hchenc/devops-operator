@@ -1,0 +1,105 @@
+package controller
+
+import (
+	"context"
+	"fmt"
+	"github.com/go-logr/logr"
+	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
+	"time"
+)
+
+func init() {
+	RegisterReconciler("DeploymentToApp", SetUpDeploymentReconcile)
+}
+
+type DeploymentOperatorReconciler struct {
+	client.Client
+	Log    logr.Logger
+	Scheme *runtime.Scheme
+}
+
+func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+	ctx := context.Background()
+	deployment := &v1.Deployment{}
+
+	err := d.Get(ctx, req.NamespacedName, deployment)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			d.Log.Info("it's a delete event")
+		}
+	} else {
+		//sync deployment to all environment(fat|uat|smoking)
+		_, err := deploymentGeneratorService.Add(deployment)
+
+		if err != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"event":    "create",
+				"resource": "Deployment",
+				"name":     deployment.Name,
+				"result":   "failed",
+				"error":    err.Error(),
+				"message":  fmt.Sprintf("deployment created failed, retry after %d second", RETRYPERIOD),
+			})
+			return reconcile.Result{
+				RequeueAfter: RETRYPERIOD * time.Second,
+			}, err
+		}
+		log.Logger.WithFields(logrus.Fields{
+			"event":    "create",
+			"resource": "Application",
+			"name":     deployment.Name,
+			"result":   "success",
+			"message":  "deployment controller successful",
+		})
+	}
+	return reconcile.Result{}, nil
+}
+
+type deploymentPredicate struct {
+}
+
+func (d deploymentPredicate) Create(e event.CreateEvent) bool {
+	name := e.Meta.GetNamespace()
+	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
+		return true
+	} else {
+		return false
+	}
+}
+func (d deploymentPredicate) Update(e event.UpdateEvent) bool {
+	//if pod label no changes or add labels, ignore
+	return false
+}
+func (d deploymentPredicate) Delete(e event.DeleteEvent) bool {
+	return false
+
+}
+func (d deploymentPredicate) Generic(e event.GenericEvent) bool {
+	return false
+}
+
+func (d *DeploymentOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&v1.Deployment{}).
+		WithEventFilter(&deploymentPredicate{}).
+		Complete(d)
+}
+
+func SetUpDeploymentReconcile(mgr manager.Manager) {
+	if err := (&DeploymentOperatorReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("DeploymentToApp"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		log.Fatalf("unable to create deployment controller for ", err)
+	}
+}
