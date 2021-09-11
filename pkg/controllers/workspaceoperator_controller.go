@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"github.com/sirupsen/logrus"
@@ -18,9 +17,7 @@ import (
 	"time"
 )
 
-const (
-	RETRYPERIOD = 15
-)
+
 
 func init() {
 	RegisterReconciler("WorkspaceToGroup", SetUpGroupReconcile)
@@ -52,8 +49,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 					"name":     "workspace-" + workspaceTemplate.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -61,8 +57,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 					"name":     workspaceTemplate.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("group created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("group created failed, retry after %d second", RETRYPERIOD)
 			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
@@ -78,8 +73,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 				"name":     workspaceTemplate.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-				"message":  fmt.Sprintf("namespace created failed, retry after %d second", RETRYPERIOD),
-			})
+			}).Errorf("namespace created failed, retry after %d second", RETRYPERIOD)
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -94,8 +88,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 				"name":     workspaceTemplate.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-				"message":  fmt.Sprintf("namespace create failed, retry after %d second", RETRYPERIOD),
-			})
+			}).Errorf("harbor project created failed, retry after %d second", RETRYPERIOD)
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -105,8 +98,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 			"resource": "Workspace",
 			"name":     workspaceTemplate.Name,
 			"result":   "success",
-			"message":  "workspace controller successful",
-		})
+		}).Infof("workspace <%s> sync succeed")
 	}
 	return reconcile.Result{}, nil
 }

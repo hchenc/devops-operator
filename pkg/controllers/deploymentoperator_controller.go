@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
@@ -47,8 +46,7 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 				"name":     deployment.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-				"message":  fmt.Sprintf("deployment created failed, retry after %d second", RETRYPERIOD),
-			})
+			}).Errorf("deployment created failed, retry after %d second", RETRYPERIOD)
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -59,7 +57,7 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			"name":     deployment.Name,
 			"result":   "success",
 			"message":  "deployment controller successful",
-		})
+		}).Infof("deployment <%s> sync successful", deployment.Name)
 	}
 	return reconcile.Result{}, nil
 }

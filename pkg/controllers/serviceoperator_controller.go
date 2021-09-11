@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -46,19 +45,17 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 				"name":     service.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-				"message":  fmt.Sprintf("service created failed, retry after %d second", RETRYPERIOD),
-			})
+			}).Errorf("service created failed, retry after %d second", RETRYPERIOD)
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
 		}
 		log.Logger.WithFields(logrus.Fields{
 			"event":    "create",
-			"resource": "Application",
+			"resource": "Service",
 			"name":     service.Name,
 			"result":   "success",
-			"message":  "application controller successful",
-		})
+		}).Infof("service <%s> sync succeed", service.Name)
 	}
 	return reconcile.Result{}, nil
 }

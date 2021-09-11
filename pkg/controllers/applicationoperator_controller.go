@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,8 +47,7 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 					"name":     "application-" + application.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -57,8 +55,7 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 					"name":     application.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("project created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("project created failed, retry after %d second", RETRYPERIOD)
 			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
@@ -74,8 +71,7 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 				"name":     application.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-				"message":  fmt.Sprintf("application created failed, retry after %d second", RETRYPERIOD),
-			})
+			}).Errorf("application created failed, retry after %d second", RETRYPERIOD)
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -86,8 +82,7 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 			"resource": "Application",
 			"name":     application.Name,
 			"result":   "success",
-			"message":  "application controller successful",
-		})
+		}).Infof("application <%s> sync successful", application.Name)
 	}
 	return reconcile.Result{}, nil
 }

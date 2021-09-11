@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/sirupsen/logrus"
@@ -47,8 +46,7 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 					"name":     "user-" + user.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -56,8 +54,7 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 					"name":     user.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("user created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("user created failed, retry after %d second", RETRYPERIOD)
 			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
@@ -68,8 +65,7 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 			"resource": "User",
 			"name":     user.Name,
 			"result":   "success",
-			"message":  "user controller successful",
-		})
+		}).Infof("user <%s> sync succeed")
 	}
 	return reconcile.Result{}, nil
 }

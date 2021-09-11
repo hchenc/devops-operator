@@ -1,11 +1,9 @@
 package controller
 
 import (
+	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"os"
-
-	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -19,6 +17,11 @@ import (
 	application "github.com/hchenc/application/pkg/apis/app/v1beta1"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	workspace "github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
+)
+
+
+const (
+	RETRYPERIOD = 15
 )
 
 var (
@@ -40,6 +43,7 @@ var (
 	harborProjectGenerator syncer.Generator
 	deploymentGenerator    syncer.Generator
 	serviceGenerator       syncer.Generator
+	volumeGenerator       syncer.Generator
 
 	projectGeneratorService     syncer.GenerateService
 	groupGeneratorService       syncer.GenerateService
@@ -51,6 +55,7 @@ var (
 	harborGeneratorService      syncer.GenerateService
 	deploymentGeneratorService  syncer.GenerateService
 	serviceGeneratorService     syncer.GenerateService
+	volumeGeneratorService     syncer.GenerateService
 )
 
 type Reconciler interface {
@@ -77,8 +82,7 @@ type Controller struct {
 
 func (c *Controller) Reconcile(stopCh <-chan struct{}) {
 	if err := c.manager.Start(stopCh); err != nil {
-		panic(err)
-		os.Exit(1)
+		log.Fatalf("start reconciler failed for %s", err.Error())
 	}
 }
 
@@ -115,6 +119,7 @@ func installGenerator(clientset *models.ClientSet) {
 	rolebindingGenerator = kubesphere.NewRolebindingGenerator(clientset.Ctx, clientset.Kubeclient)
 	deploymentGenerator = kubesphere.NewDeploymentGenerator(clientset.Ctx, clientset.Kubeclient)
 	serviceGenerator = kubesphere.NewServiceGenerator(clientset.Ctx, clientset.Kubeclient)
+	volumeGenerator = kubesphere.NewVolumeGenerator(clientset.Ctx, clientset.Kubeclient)
 
 	harborProjectGenerator = harbor.NewHarborProjectGenerator("", "", clientset.HarborClient)
 }
@@ -130,4 +135,5 @@ func installGeneratorService() {
 	harborGeneratorService = syncer.NewGenerateService(harborProjectGenerator)
 	deploymentGeneratorService = syncer.NewGenerateService(deploymentGenerator)
 	serviceGeneratorService = syncer.NewGenerateService(serviceGenerator)
+	volumeGeneratorService = syncer.NewGenerateService(volumeGenerator)
 }

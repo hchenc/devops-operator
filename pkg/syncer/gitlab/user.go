@@ -109,9 +109,7 @@ func (u userInfo) list(key string) ([]*git.User, error) {
 	if err != nil {
 		u.logger.WithFields(logrus.Fields{
 			"event":  "list",
-			"errros": err.Error(),
-			"msg":    resp.Body,
-		})
+		}).Error(err.Error())
 		return nil, err
 	} else {
 		return users, nil

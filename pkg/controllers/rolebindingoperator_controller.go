@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/sirupsen/logrus"
@@ -48,8 +47,7 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 					"name":     "member-" + rolebinding.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("pager created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -57,8 +55,7 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 					"name":     rolebinding.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-					"message":  fmt.Sprintf("member created failed, retry after %d second", RETRYPERIOD),
-				})
+				}).Errorf("member created failed, retry after %d second", RETRYPERIOD)
 			}
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
@@ -73,8 +70,7 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 				"name":     rolebinding.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-				"message":  fmt.Sprintf("rolebinding sync failed, retry after %d second", RETRYPERIOD),
-			})
+			}).Errorf("rolebinding sync failed, retry after %d second", RETRYPERIOD)
 			return reconcile.Result{
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
@@ -85,8 +81,7 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			"resource": "Rolebinding",
 			"name":     rolebinding.Name,
 			"result":   "success",
-			"message":  "rolebinding controller successful",
-		})
+		}).Infof("rolebinding <%s> sync successful", rolebinding.Name)
 	}
 	return reconcile.Result{}, nil
 }
