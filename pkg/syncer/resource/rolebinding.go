@@ -16,37 +16,41 @@ type rolebindingInfo struct {
 }
 
 func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
-	rolebinding := obj.(*v1alpha2.WorkspaceRoleBinding)
-	workspaceName := rolebinding.Labels["kubesphere.io/workspace"]
-	userName := rolebinding.Subjects[0].Name
+	workspaceRolebinding := obj.(*v1alpha2.WorkspaceRoleBinding)
+	workspaceName := workspaceRolebinding.Labels["kubesphere.io/workspace"]
+	userName := workspaceRolebinding.Subjects[0].Name
+
 	candidates := map[string]string{
-		"fat":     workspaceName + "-fat",
-		"uat":     workspaceName + "-uat",
-		"smoking": workspaceName + "-smoking",
+		workspaceName + "-fat":     "fat",
+		workspaceName + "-uat":     "uat",
+		workspaceName + "-smoking": "smoking",
 	}
-	for _, namespace := range candidates {
-		rolebindings := &v1.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      userName + "-operator",
-				Namespace: namespace,
-				Labels: map[string]string{
-					"iam.kubesphere.io/user-ref": userName,
+
+	for namespace := range candidates {
+		rolebinding := assembleResource(workspaceRolebinding, namespace, func(obj interface{}, namespace string) interface{} {
+			return &v1.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      userName + "-operator",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"iam.kubesphere.io/user-ref": userName,
+					},
 				},
-			},
-			Subjects: []v1.Subject{
-				{
-					Kind:     "User",
+				Subjects: []v1.Subject{
+					{
+						Kind:     "User",
+						APIGroup: "rbac.authorization.k8s.io",
+						Name:     userName,
+					},
+				},
+				RoleRef: v1.RoleRef{
 					APIGroup: "rbac.authorization.k8s.io",
-					Name:     userName,
+					Kind:     "Role",
+					Name:     "operator",
 				},
-			},
-			RoleRef: v1.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
-				Kind:     "Role",
-				Name:     "operator",
-			},
-		}
-		_, err := r.kubeclient.RbacV1().RoleBindings(namespace).Create(r.ctx, rolebindings, metav1.CreateOptions{})
+			}
+		}).(*v1.RoleBinding)
+		_, err := r.kubeclient.RbacV1().RoleBindings(namespace).Create(r.ctx, rolebinding, metav1.CreateOptions{})
 		if errors.IsAlreadyExists(err) {
 			continue
 		} else {

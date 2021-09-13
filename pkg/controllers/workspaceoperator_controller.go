@@ -17,8 +17,6 @@ import (
 	"time"
 )
 
-
-
 func init() {
 	RegisterReconciler("WorkspaceToGroup", SetUpGroupReconcile)
 }
@@ -98,7 +96,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 			"resource": "Workspace",
 			"name":     workspaceTemplate.Name,
 			"result":   "success",
-		}).Infof("workspace <%s> sync succeed")
+		}).Infof("workspace <%s> sync succeed", workspaceTemplate.Name)
 	}
 	return reconcile.Result{}, nil
 }

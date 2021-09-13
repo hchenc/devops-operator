@@ -28,7 +28,25 @@ func (s serviceInfo) Create(obj interface{}) (interface{}, error) {
 
 	for namespace := range candidates {
 		//service := assembleService(service, namespace)
-		service := setupResource(service, namespace, assembleServiceFunc).(*v1.Service)
+		service := assembleResource(service, namespace, func(obj interface{}, namespace string) interface{} {
+			return &v1.Service{
+				TypeMeta: service.TypeMeta,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        service.Name,
+					Namespace:   namespace,
+					Labels:      service.Labels,
+					Annotations: service.Annotations,
+					Finalizers:  service.Finalizers,
+					ClusterName: service.ClusterName,
+				},
+				Spec: v1.ServiceSpec{
+					Ports:           service.Spec.Ports,
+					Selector:        service.Spec.Selector,
+					Type:            service.Spec.Type,
+					SessionAffinity: service.Spec.SessionAffinity,
+				},
+			}
+		}).(*v1.Service)
 		_, err := s.kubeClient.CoreV1().Services(namespace).Create(s.ctx, service, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
 			continue
@@ -58,49 +76,6 @@ func (s serviceInfo) GetByID(id int) (interface{}, error) {
 func (s serviceInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
-
-func assembleService(service *v1.Service, namespace string) *v1.Service {
-	return &v1.Service{
-		TypeMeta: service.TypeMeta,
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        service.Name,
-			Namespace:   namespace,
-			Labels:      service.Labels,
-			Annotations: service.Annotations,
-			Finalizers:  service.Finalizers,
-			ClusterName: service.ClusterName,
-		},
-		Spec: v1.ServiceSpec{
-			Ports:           service.Spec.Ports,
-			Selector:        service.Spec.Selector,
-			Type:            service.Spec.Type,
-			SessionAffinity: service.Spec.SessionAffinity,
-		},
-	}
-}
-
-func assembleServiceFunc(obj interface{}, namespace string) interface{} {
-	service := obj.(*v1.Service)
-
-	return &v1.Service{
-		TypeMeta: service.TypeMeta,
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        service.Name,
-			Namespace:   namespace,
-			Labels:      service.Labels,
-			Annotations: service.Annotations,
-			Finalizers:  service.Finalizers,
-			ClusterName: service.ClusterName,
-		},
-		Spec: v1.ServiceSpec{
-			Ports:           service.Spec.Ports,
-			Selector:        service.Spec.Selector,
-			Type:            service.Spec.Type,
-			SessionAffinity: service.Spec.SessionAffinity,
-		},
-	}
-}
-
 
 func NewServiceGenerator(ctx context.Context, kubeClient *kubernetes.Clientset) syncer.Generator {
 	return serviceInfo{

@@ -18,16 +18,39 @@ type namespaceInfo struct {
 
 func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 	workspace := obj.(*v1alpha2.WorkspaceTemplate)
-	name := workspace.Name
+	workspaceName := workspace.Name
 	candidates := map[string]string{
-		"fat":     name + "-fat",
-		"uat":     name + "-uat",
-		"smoking": name + "-smoking",
+		"fat":     workspaceName + "-fat",
+		"uat":     workspaceName + "-uat",
+		"smoking": workspaceName + "-smoking",
 	}
 	creator := workspace.GetAnnotations()["kubesphere.io/creator"]
 
-	namespaces := assembleNamespace(workspace, name, creator, candidates)
-	for _, namespace := range namespaces {
+	for _, namespaceName := range candidates {
+		namespace := assembleResource(workspace, namespaceName, func(obj interface{}, namespace string) interface{} {
+			return &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: namespaceName,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: tenantv1alpha1.SchemeGroupVersion.Group,
+							Kind:       "Workspace",
+							Name:       workspaceName,
+							UID:        workspace.UID,
+						},
+					},
+					Labels: map[string]string{
+						"kubesphere.io/creator":       creator,
+						"kubernetes.io/metadata.name": namespaceName,
+						"kubesphere.io/namespace":     namespaceName,
+						"kubesphere.io/workspace":     workspaceName,
+					},
+					Annotations: map[string]string{
+						"kubesphere.io/creator": creator,
+					},
+				},
+			}
+		}).(*v1.Namespace)
 		_, err := n.client.CoreV1().Namespaces().Create(n.ctx, namespace, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
 			continue
@@ -36,36 +59,6 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 		}
 	}
 	return nil, nil
-}
-
-func assembleNamespace(workspace *v1alpha2.WorkspaceTemplate, name string, creator string, candidates map[string]string) []*v1.Namespace {
-	var namespaces []*v1.Namespace
-	for _, namespaceName := range candidates {
-		namespace := &v1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: namespaceName,
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: tenantv1alpha1.SchemeGroupVersion.Group,
-						Kind:       "Workspace",
-						Name:       name,
-						UID:        workspace.UID,
-					},
-				},
-				Labels: map[string]string{
-					"kubesphere.io/creator":       creator,
-					"kubernetes.io/metadata.name": namespaceName,
-					"kubesphere.io/namespace":     namespaceName,
-					"kubesphere.io/workspace":     name,
-				},
-				Annotations: map[string]string{
-					"kubesphere.io/creator": creator,
-				},
-			},
-		}
-		namespaces = append(namespaces, namespace)
-	}
-	return namespaces
 }
 
 func (n namespaceInfo) Update(objOld interface{}, objNew interface{}) error {

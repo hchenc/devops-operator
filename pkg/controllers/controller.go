@@ -19,7 +19,6 @@ import (
 	workspace "github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 )
 
-
 const (
 	RETRYPERIOD = 15
 )
@@ -43,7 +42,7 @@ var (
 	harborProjectGenerator syncer.Generator
 	deploymentGenerator    syncer.Generator
 	serviceGenerator       syncer.Generator
-	volumeGenerator       syncer.Generator
+	volumeGenerator        syncer.Generator
 
 	projectGeneratorService     syncer.GenerateService
 	groupGeneratorService       syncer.GenerateService
@@ -55,7 +54,7 @@ var (
 	harborGeneratorService      syncer.GenerateService
 	deploymentGeneratorService  syncer.GenerateService
 	serviceGeneratorService     syncer.GenerateService
-	volumeGeneratorService     syncer.GenerateService
+	volumeGeneratorService      syncer.GenerateService
 )
 
 type Reconciler interface {

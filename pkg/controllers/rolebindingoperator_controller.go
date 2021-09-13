@@ -61,7 +61,7 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 				RequeueAfter: RETRYPERIOD * time.Second,
 			}, err
 		}
-		//sync group's user to all environment(fat|uat|smoking)
+		//sync group's user from none to all environment(fat|uat|smoking)
 		_, err = rolebindingGeneratorService.Add(rolebinding)
 		if err != nil {
 			log.Logger.WithFields(logrus.Fields{

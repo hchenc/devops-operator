@@ -32,7 +32,7 @@ func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 
 	err := v.Get(ctx, req.NamespacedName, volume)
 	if err != nil {
-		if errors.IsNotFound(err){
+		if errors.IsNotFound(err) {
 			v.Log.Info("receive delete event")
 		}
 	} else {
@@ -68,7 +68,6 @@ func (v *VolumeOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(&volumePredicate{}).
 		Complete(v)
 }
-
 
 type volumePredicate struct {
 }

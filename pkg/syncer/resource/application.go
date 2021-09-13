@@ -28,18 +28,20 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 	delete(candidates, application.Namespace)
 
 	for namespace, _ := range candidates {
-		newApplication := &applicationv1beta1.Application{
-			ObjectMeta: v1.ObjectMeta{
-				Name:        application.Name,
-				Namespace:   namespace,
-				Labels:      application.Labels,
-				Annotations: application.Labels,
-				Finalizers:  application.Finalizers,
-				ClusterName: application.ClusterName,
-			},
-			Spec: application.Spec,
-		}
-		_, err := a.appClient.AppV1beta1().Applications(namespace).Create(a.ctx, newApplication, v1.CreateOptions{})
+		application := assembleResource(application, namespace, func(obj interface{}, namespace string) interface{} {
+			return &applicationv1beta1.Application{
+				ObjectMeta: v1.ObjectMeta{
+					Name:        application.Name,
+					Namespace:   namespace,
+					Labels:      application.Labels,
+					Annotations: application.Labels,
+					Finalizers:  application.Finalizers,
+					ClusterName: application.ClusterName,
+				},
+				Spec: application.Spec,
+			}
+		}).(*applicationv1beta1.Application)
+		_, err := a.appClient.AppV1beta1().Applications(namespace).Create(a.ctx, application, v1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
 			continue
 		} else {

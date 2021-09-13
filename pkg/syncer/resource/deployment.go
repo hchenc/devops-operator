@@ -28,7 +28,38 @@ func (d deploymentInfo) Create(obj interface{}) (interface{}, error) {
 	delete(candidates, deployment.Namespace)
 
 	for namespace := range candidates {
-		deployment := assembleDeployment(deployment, namespace)
+		deployment := assembleResource(deployment, namespace, func(obj interface{}, namespace string) interface{} {
+			return &v1.Deployment{
+				TypeMeta: deployment.TypeMeta,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        deployment.Name,
+					Namespace:   namespace,
+					Labels:      deployment.Labels,
+					Annotations: deployment.Annotations,
+					Finalizers:  deployment.Finalizers,
+					ClusterName: deployment.ClusterName,
+				},
+				Spec: v1.DeploymentSpec{
+					Replicas: deployment.Spec.Replicas,
+					Selector: deployment.Spec.Selector,
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels:      deployment.Spec.Template.Labels,
+							Annotations: deployment.Spec.Template.Annotations,
+						},
+						Spec: corev1.PodSpec{
+							Containers:         deployment.Spec.Template.Spec.Containers,
+							ServiceAccountName: deployment.Spec.Template.Spec.ServiceAccountName,
+							Affinity:           deployment.Spec.Template.Spec.Affinity,
+							InitContainers:     deployment.Spec.Template.Spec.InitContainers,
+							Volumes:            deployment.Spec.Template.Spec.Volumes,
+							ImagePullSecrets:   deployment.Spec.Template.Spec.ImagePullSecrets,
+						},
+					},
+					Strategy: deployment.Spec.Strategy,
+				},
+			}
+		}).(*v1.Deployment)
 		_, err := d.kubeClient.AppsV1().Deployments(namespace).Create(d.ctx, deployment, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
 			continue
@@ -57,39 +88,6 @@ func (d deploymentInfo) GetByID(id int) (interface{}, error) {
 
 func (d deploymentInfo) List(key string) (interface{}, error) {
 	panic("implement me")
-}
-
-func assembleDeployment(deployment *v1.Deployment, namespace string) *v1.Deployment {
-	return &v1.Deployment{
-		TypeMeta: deployment.TypeMeta,
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        deployment.Name,
-			Namespace:   namespace,
-			Labels:      deployment.Labels,
-			Annotations: deployment.Annotations,
-			Finalizers:  deployment.Finalizers,
-			ClusterName: deployment.ClusterName,
-		},
-		Spec: v1.DeploymentSpec{
-			Replicas: deployment.Spec.Replicas,
-			Selector: deployment.Spec.Selector,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      deployment.Spec.Template.Labels,
-					Annotations: deployment.Spec.Template.Annotations,
-				},
-				Spec: corev1.PodSpec{
-					Containers:         deployment.Spec.Template.Spec.Containers,
-					ServiceAccountName: deployment.Spec.Template.Spec.ServiceAccountName,
-					Affinity:           deployment.Spec.Template.Spec.Affinity,
-					InitContainers:     deployment.Spec.Template.Spec.InitContainers,
-					Volumes:            deployment.Spec.Template.Spec.Volumes,
-					ImagePullSecrets:   deployment.Spec.Template.Spec.ImagePullSecrets,
-				},
-			},
-			Strategy: deployment.Spec.Strategy,
-		},
-	}
 }
 
 func NewDeploymentGenerator(ctx context.Context, kubeClient *kubernetes.Clientset) syncer.Generator {
