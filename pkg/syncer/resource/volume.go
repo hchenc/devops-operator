@@ -1,4 +1,4 @@
-package kubesphere
+package resource
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type volumeInfo struct {
 }
 
 func (v volumeInfo) Create(obj interface{}) (interface{}, error) {
-	volume := obj.(*v1.PersistentVolume)
+	volume := obj.(*v1.PersistentVolumeClaim)
 
 	namespacePrefix := strings.Split(volume.Namespace, "-")[0]
 	candidates := map[string]string{
@@ -28,7 +28,7 @@ func (v volumeInfo) Create(obj interface{}) (interface{}, error) {
 
 	for namespace := range candidates {
 		volume := assembleVolume(volume, namespace)
-		_, err := v.kubeClient.CoreV1().PersistentVolumes().Create(v.ctx, volume, metav1.CreateOptions{})
+		_, err := v.kubeClient.CoreV1().PersistentVolumeClaims(namespace).Create(v.ctx, volume, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
 			continue
 		} else {
@@ -58,16 +58,19 @@ func (v volumeInfo) List(key string) (interface{}, error) {
 	panic("implement me")
 }
 
-// TODO
-func assembleVolume(volume *v1.PersistentVolume, namespace string) *v1.PersistentVolume {
-	return &v1.PersistentVolume{
+func assembleVolume(volume *v1.PersistentVolumeClaim, namespace string) *v1.PersistentVolumeClaim {
+	return &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        volume.Name,
 			Namespace:   namespace,
 			Labels:      volume.Labels,
 			Annotations: volume.Annotations,
 		},
-		Spec: v1.PersistentVolumeSpec{},
+		Spec: v1.PersistentVolumeClaimSpec{
+			AccessModes:      volume.Spec.AccessModes,
+			Resources:        volume.Spec.Resources,
+			StorageClassName: volume.Spec.StorageClassName,
+		},
 	}
 }
 

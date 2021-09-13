@@ -1,4 +1,4 @@
-package kubesphere
+package resource
 
 import (
 	"context"
@@ -21,18 +21,17 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 	application := obj.(*applicationv1beta1.Application)
 	namespacePrefix := strings.Split(application.Namespace, "-")[0]
 	candidates := map[string]string{
-		"fat":     namespacePrefix + "-fat",
-		"uat":     namespacePrefix + "-uat",
-		"smoking": namespacePrefix + "-smoking",
+		namespacePrefix + "-fat":     "fat",
+		namespacePrefix + "-uat":     "uat",
+		namespacePrefix + "-smoking": "smoking",
 	}
-	for _, v := range candidates {
-		if v == application.Namespace {
-			continue
-		}
+	delete(candidates, application.Namespace)
+
+	for namespace, _ := range candidates {
 		newApplication := &applicationv1beta1.Application{
 			ObjectMeta: v1.ObjectMeta{
 				Name:        application.Name,
-				Namespace:   v,
+				Namespace:   namespace,
 				Labels:      application.Labels,
 				Annotations: application.Labels,
 				Finalizers:  application.Finalizers,
@@ -40,7 +39,7 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 			},
 			Spec: application.Spec,
 		}
-		_, err := a.appClient.AppV1beta1().Applications(v).Create(a.ctx, newApplication, v1.CreateOptions{})
+		_, err := a.appClient.AppV1beta1().Applications(namespace).Create(a.ctx, newApplication, v1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
 			continue
 		} else {

@@ -11,7 +11,7 @@ import (
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/syncer/gitlab"
 	"github.com/hchenc/devops-operator/pkg/syncer/harbor"
-	"github.com/hchenc/devops-operator/pkg/syncer/kubesphere"
+	"github.com/hchenc/devops-operator/pkg/syncer/resource"
 	"github.com/hchenc/devops-operator/pkg/utils"
 
 	application "github.com/hchenc/application/pkg/apis/app/v1beta1"
@@ -114,12 +114,12 @@ func installGenerator(clientset *models.ClientSet) {
 	userGenerator = gitlab.NewUserGenerator(clientset.Ctx, clientset.GitlabClient, clientset.PagerClient)
 	memberGenerator = gitlab.NewMemberGenerator(clientset.Ctx, clientset.GitlabClient, clientset.PagerClient)
 
-	namespaceGenerator = kubesphere.NewNamespaceGenerator(clientset.Ctx, clientset.Kubeclient)
-	applicationGenerator = kubesphere.NewApplicationGenerator(clientset.Ctx, clientset.Kubeclient, clientset.AppClient)
-	rolebindingGenerator = kubesphere.NewRolebindingGenerator(clientset.Ctx, clientset.Kubeclient)
-	deploymentGenerator = kubesphere.NewDeploymentGenerator(clientset.Ctx, clientset.Kubeclient)
-	serviceGenerator = kubesphere.NewServiceGenerator(clientset.Ctx, clientset.Kubeclient)
-	volumeGenerator = kubesphere.NewVolumeGenerator(clientset.Ctx, clientset.Kubeclient)
+	namespaceGenerator = resource.NewNamespaceGenerator(clientset.Ctx, clientset.Kubeclient)
+	applicationGenerator = resource.NewApplicationGenerator(clientset.Ctx, clientset.Kubeclient, clientset.AppClient)
+	rolebindingGenerator = resource.NewRolebindingGenerator(clientset.Ctx, clientset.Kubeclient)
+	deploymentGenerator = resource.NewDeploymentGenerator(clientset.Ctx, clientset.Kubeclient)
+	serviceGenerator = resource.NewServiceGenerator(clientset.Ctx, clientset.Kubeclient)
+	volumeGenerator = resource.NewVolumeGenerator(clientset.Ctx, clientset.Kubeclient)
 
 	harborProjectGenerator = harbor.NewHarborProjectGenerator("", "", clientset.HarborClient)
 }

@@ -28,7 +28,7 @@ type VolumeOperatorReconciler struct {
 
 func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.Background()
-	volume := &v1.PersistentVolume{}
+	volume := &v1.PersistentVolumeClaim{}
 
 	err := v.Get(ctx, req.NamespacedName, volume)
 	if err != nil {
@@ -57,14 +57,14 @@ func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 			"name":     volume.Name,
 			"result":   "success",
 			"message":  "volume controller successful",
-		}).Infof("volume <%s> sync successful", volume.Name)
+		}).Infof("volume %s sync successful", volume.Name)
 	}
 	return reconcile.Result{}, nil
 }
 
 func (v *VolumeOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1.PersistentVolume{}).
+		For(&v1.PersistentVolumeClaim{}).
 		WithEventFilter(&volumePredicate{}).
 		Complete(v)
 }
@@ -74,8 +74,11 @@ type volumePredicate struct {
 }
 
 func (v volumePredicate) Create(e event.CreateEvent) bool {
-	name := e.Meta.GetNamespace()
-	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
+	namespace := e.Meta.GetNamespace()
+	if _, exist := e.Meta.GetLabels()["app.kubernetes.io/name"]; !exist {
+		return false
+	}
+	if strings.Contains(namespace, "smoking") || strings.Contains(namespace, "fat") || strings.Contains(namespace, "uat") {
 		return true
 	} else {
 		return false
@@ -83,15 +86,15 @@ func (v volumePredicate) Create(e event.CreateEvent) bool {
 }
 
 func (v volumePredicate) Delete(event.DeleteEvent) bool {
-	panic("implement me")
+	return false
 }
 
 func (v volumePredicate) Update(event.UpdateEvent) bool {
-	panic("implement me")
+	return false
 }
 
 func (v volumePredicate) Generic(event.GenericEvent) bool {
-	panic("implement me")
+	return false
 }
 
 func SetUpVolumeReconcile(mgr manager.Manager) {
