@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"github.com/hchenc/application/pkg/client/clientset/versioned"
 	harbor2 "github.com/hchenc/go-harbor"
 	versioned2 "github.com/hchenc/pager/pkg/client/clientset/versioned"
@@ -31,8 +32,20 @@ type ClientSet struct {
 	HarborClient *harbor2.APIClient
 }
 
-func newForDevopsConfigOrDie(devopsConfig *Config) *GitlabClient {
+func newForDevOpsConfigOrDie(devopsConfig *Config) *GitlabClient {
 	var gitlabClient GitlabClient
+
+	if devopsConfig == (&Config{}) {
+		panic(errors.New("devops instance is nil"))
+	}
+
+	for _, pipeline := range devopsConfig.Devops.Pipelines {
+		if  pipeline.CiConfigPath == "" ||
+			pipeline.Template == "" ||
+			pipeline.Pipeline == "" {
+			panic(errors.New("pipeline not found"))
+		}
+	}
 
 	gc, err := gitlab.NewBasicAuthClient(devopsConfig.Devops.Gitlab.User,
 		devopsConfig.Devops.Gitlab.Password,
@@ -51,6 +64,7 @@ func newForDevopsConfigOrDie(devopsConfig *Config) *GitlabClient {
 }
 
 func NewForConfigOrDie(restConfig *rest.Config, devopsConfig *Config) *ClientSet {
+
 	var cs ClientSet
 
 	cs.Ctx = context.Background()
@@ -61,7 +75,7 @@ func NewForConfigOrDie(restConfig *rest.Config, devopsConfig *Config) *ClientSet
 
 	cs.PagerClient = versioned2.NewForConfigOrDie(restConfig)
 
-	cs.GitlabClient = newForDevopsConfigOrDie(devopsConfig)
+	cs.GitlabClient = newForDevOpsConfigOrDie(devopsConfig)
 
 	cs.HarborClient = harbor2.NewAPIClient(harbor2.NewConfigurationWithContext(devopsConfig.Devops.Harbor.Host,
 		context.WithValue(context.Background(),

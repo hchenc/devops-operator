@@ -65,7 +65,10 @@ type servicePredicate struct {
 
 func (s servicePredicate) Create(e event.CreateEvent) bool {
 	name := e.Meta.GetNamespace()
+	labels := e.Meta.GetLabels()
 	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
+		return true
+	} else if _, ok := labels["app"]; ok{
 		return true
 	} else {
 		return false

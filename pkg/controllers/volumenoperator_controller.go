@@ -76,8 +76,7 @@ func (v volumePredicate) Create(e event.CreateEvent) bool {
 	namespace := e.Meta.GetNamespace()
 	if _, exist := e.Meta.GetLabels()["app.kubernetes.io/name"]; !exist {
 		return false
-	}
-	if strings.Contains(namespace, "smoking") || strings.Contains(namespace, "fat") || strings.Contains(namespace, "uat") {
+	} else if strings.Contains(namespace, "smoking") || strings.Contains(namespace, "fat") || strings.Contains(namespace, "uat") {
 		return true
 	} else {
 		return false

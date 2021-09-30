@@ -1,18 +1,17 @@
 package controller
 
 import (
-	"github.com/sirupsen/logrus"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/syncer/gitlab"
 	"github.com/hchenc/devops-operator/pkg/syncer/harbor"
 	"github.com/hchenc/devops-operator/pkg/syncer/resource"
 	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	application "github.com/hchenc/application/pkg/apis/app/v1beta1"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"

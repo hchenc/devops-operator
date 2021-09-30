@@ -65,7 +65,7 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 			"resource": "User",
 			"name":     user.Name,
 			"result":   "success",
-		}).Infof("user <%s> sync succeed")
+		}).Infof("user <%s> sync succeed", user.Name)
 	}
 	return reconcile.Result{}, nil
 }

@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	JAVA_CIFile = `variables:
+	JAVA_CIFile = `
+variables:
   DOCKER_DRIVER: overlay2
   DOCKER_HOST: tcp://localhost:2375
 
@@ -93,7 +94,7 @@ func GenProject(id int, client *git.Client) (int, error) {
 	})
 	if err != nil {
 		return 0, err
-	} else if projects != nil {
+	} else if len(projects) != 0 {
 		return projects[0].ID, nil
 	}
 	project, _, err := client.Projects.CreateProject(&git.CreateProjectOptions{
@@ -170,7 +171,7 @@ func GenPipeline(id int, client *git.Client) error {
 		Actions: []*git.CommitActionOptions{
 			{
 				Action:          git.FileAction(git.FileCreate),
-				FilePath:        git.String("java.yaml"),
+				FilePath:        git.String("java.yml"),
 				PreviousPath:    nil,
 				Content:         git.String(fmt.Sprintf(JAVA_CIFile, "harbor.hchenc.com")),
 				Encoding:        nil,
@@ -179,7 +180,7 @@ func GenPipeline(id int, client *git.Client) error {
 			},
 			{
 				Action:          git.FileAction(git.FileCreate),
-				FilePath:        git.String("python.yaml"),
+				FilePath:        git.String("python.yml"),
 				PreviousPath:    nil,
 				Content:         git.String(fmt.Sprintf(JAVA_CIFile, "harbor.hchenc.com")),
 				Encoding:        nil,
@@ -188,7 +189,7 @@ func GenPipeline(id int, client *git.Client) error {
 			},
 			{
 				Action:          git.FileAction(git.FileCreate),
-				FilePath:        git.String("nodejs.yaml"),
+				FilePath:        git.String("nodejs.yml"),
 				PreviousPath:    nil,
 				Content:         git.String(fmt.Sprintf(JAVA_CIFile, "harbor.hchenc.com")),
 				Encoding:        nil,

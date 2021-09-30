@@ -26,7 +26,7 @@ type Gitlab struct {
 }
 
 type Pipelines struct {
-	Ci       string `yaml:"Ci"`
-	Pipeline string `yaml:"Pipeline"`
-	Template string `yaml:"Template"`
+	CiConfigPath string `yaml:"CiConfigPath"`
+	Pipeline     string `yaml:"Pipeline"`
+	Template     string `yaml:"Template"`
 }

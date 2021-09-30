@@ -5,6 +5,7 @@ import (
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/hchenc/pager/pkg/apis/devops/v1alpha1"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
@@ -24,6 +25,11 @@ type groupInfo struct {
 
 func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 	workspace := obj.(*v1alpha2.WorkspaceTemplate)
+	workspaceLogInfo := logrus.Fields{
+		"workspace": workspace.Name,
+	}
+	g.logger.WithFields(workspaceLogInfo).Info("start to create gitlab group")
+
 	name := git.String(workspace.Name)
 	description := git.String(workspace.GetAnnotations()["kubesphere.io/description"])
 	group, resp, err := g.gitlabClient.Client.Groups.CreateGroup(&git.CreateGroupOptions{
@@ -35,9 +41,9 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 		ShareWithGroupLock:             git.Bool(false),
 		RequireTwoFactorAuth:           git.Bool(false),
 		TwoFactorGracePeriod:           nil,
-		ProjectCreationLevel:           git.ProjectCreationLevel(git.MaintainerProjectCreation),
+		ProjectCreationLevel:           git.ProjectCreationLevel(git.DeveloperProjectCreation),
 		AutoDevopsEnabled:              git.Bool(false),
-		SubGroupCreationLevel:          git.SubGroupCreationLevel(git.OwnerSubGroupCreationLevelValue),
+		SubGroupCreationLevel:          git.SubGroupCreationLevel(git.MaintainerSubGroupCreationLevelValue),
 		EmailsDisabled:                 git.Bool(false),
 		MentionsDisabled:               git.Bool(false),
 		LFSEnabled:                     nil,
@@ -51,9 +57,16 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 	if err := models.NewConflict(err); err == nil || errors.IsConflict(err) {
 		if group == nil {
 			if groups, err := g.list(workspace.Name); err != nil {
+				g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
+					"message": "failed to get gitlab group",
+				}).Error(err)
 				return nil, err
 			} else {
 				group = groups[0]
+				g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
+					"groupName": group.Name,
+					"groupId":   group.ID,
+				}).Info("succeed to get gitlab group")
 			}
 		}
 		_, err := g.pagerClient.
@@ -72,9 +85,16 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 		if err == nil || errors.IsAlreadyExists(err) {
 			return group, nil
 		} else {
+			g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
+				"message": "failed to create pager",
+				"pager":   "workspace-" + workspace.Name,
+			}).Error(err)
 			return group, err
 		}
 	} else {
+		g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
+			"message": "failed to create gitlab group",
+		}).Error(err)
 		return nil, err
 	}
 }
@@ -123,10 +143,15 @@ func (g groupInfo) list(key string) ([]*git.Group, error) {
 
 func NewGroupGenerator(name string, ctx context.Context, gitlabClient *models.GitlabClient, pagerClient *pager.Clientset) syncer.Generator {
 	//cancelCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "gitlab",
+		"resource":  "group",
+	})
 	return &groupInfo{
 		groupName:    name,
 		gitlabClient: gitlabClient,
 		pagerClient:  pagerClient,
 		ctx:          ctx,
+		logger:       logger,
 	}
 }

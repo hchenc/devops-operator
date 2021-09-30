@@ -83,19 +83,19 @@ func setUp() error {
 
 	config.Devops.Pipelines = []models.Pipelines{
 		{
-			Pipeline: "java",
-			Template: "Spring",
-			Ci:       "http://gitlab.hchenc.com/devops/devops/-/raw/main/java.yaml",
+			Pipeline:     "java",
+			Template:     "spring",
+			CiConfigPath: "http://gitlab.hchenc.com/devops/devops/-/raw/main/java.yml",
 		},
 		{
-			Pipeline: "Python",
-			Template: "",
-			Ci:       "http://gitlab.hchenc.com/devops/devops/-/raw/master/python.yml",
+			Pipeline:     "python",
+			Template:     "",
+			CiConfigPath: "http://gitlab.hchenc.com/devops/devops/-/raw/master/python.yml",
 		},
 		{
-			Pipeline: "nodejs",
-			Template: "",
-			Ci:       "http://gitlab.hchenc.com/devops/devops/-/raw/master/nodejs.yml",
+			Pipeline:     "nodejs",
+			Template:     "nodejs express",
+			CiConfigPath: "http://gitlab.hchenc.com/devops/devops/-/raw/master/nodejs.yml",
 		},
 	}
 	gitClient, _ := pipeline.InstallGitLabClient(config.Devops.Gitlab.Host, config.Devops.Gitlab.Port, config.Devops.Gitlab.User, config.Devops.Gitlab.Password, "")

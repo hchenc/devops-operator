@@ -103,7 +103,6 @@ func (r rolebindingPredicate) Update(e event.UpdateEvent) bool {
 }
 func (r rolebindingPredicate) Delete(e event.DeleteEvent) bool {
 	return false
-
 }
 func (r rolebindingPredicate) Generic(e event.GenericEvent) bool {
 	return false

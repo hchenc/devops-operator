@@ -11,6 +11,20 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	FAT     = "功能验收测试环境(Feature Acceptance Test environment)"
+	UAT     = "用户验收测试环境(User Acceptance Test environment)"
+	SMOKING = "准生产冒烟测试环境(Smoking Test environment)"
+)
+
+var (
+	env = map[string]string{
+		"fat":     FAT,
+		"uat":     UAT,
+		"smoking": SMOKING,
+	}
+)
+
 type namespaceInfo struct {
 	client *kubernetes.Clientset
 	ctx    context.Context
@@ -26,7 +40,7 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 	}
 	creator := workspace.GetAnnotations()["kubesphere.io/creator"]
 
-	for _, namespaceName := range candidates {
+	for index, namespaceName := range candidates {
 		namespace := assembleResource(workspace, namespaceName, func(obj interface{}, namespace string) interface{} {
 			return &v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
@@ -46,7 +60,8 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 						"kubesphere.io/workspace":     workspaceName,
 					},
 					Annotations: map[string]string{
-						"kubesphere.io/creator": creator,
+						"kubesphere.io/creator":     creator,
+						"kubesphere.io/description": env[index],
 					},
 				},
 			}

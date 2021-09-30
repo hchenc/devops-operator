@@ -29,6 +29,17 @@ func (s serviceInfo) Create(obj interface{}) (interface{}, error) {
 	for namespace := range candidates {
 		//service := assembleService(service, namespace)
 		service := assembleResource(service, namespace, func(obj interface{}, namespace string) interface{} {
+			var newServicePort []v1.ServicePort
+			for _, port := range service.Spec.Ports {
+				svcPort := v1.ServicePort{
+					Name:        port.Name,
+					Protocol:    port.Protocol,
+					AppProtocol: port.AppProtocol,
+					Port:        port.Port,
+					TargetPort:  port.TargetPort,
+				}
+				newServicePort = append(newServicePort, svcPort)
+			}
 			return &v1.Service{
 				TypeMeta: service.TypeMeta,
 				ObjectMeta: metav1.ObjectMeta{
@@ -40,7 +51,7 @@ func (s serviceInfo) Create(obj interface{}) (interface{}, error) {
 					ClusterName: service.ClusterName,
 				},
 				Spec: v1.ServiceSpec{
-					Ports:           service.Spec.Ports,
+					Ports:           newServicePort,
 					Selector:        service.Spec.Selector,
 					Type:            service.Spec.Type,
 					SessionAffinity: service.Spec.SessionAffinity,

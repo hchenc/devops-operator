@@ -38,75 +38,73 @@ type projectInfo struct {
 
 func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	application := obj.(*v1beta1.Application)
-	var pip models.Pipelines
-	appType := application.Labels["appType"]
-	if appType == "" {
-		appType = "java"
+	appLogInfo := logrus.Fields{
+		"application": application.Name,
+		"namespace":   application.Namespace,
 	}
-	for _, pipe := range p.gitlabClient.Pipelines {
-		if appType == pipe.Pipeline {
-			pip = pipe
+	p.logger.WithFields(appLogInfo).Info("start to create gitlab project")
+	var pipeline models.Pipelines
+	appType := application.Labels["app.kubernetes.io/type"]
+	creator := application.Annotations["kubesphere.io/creator"]
+	if creator == "admin" {
+		p.logger.WithFields(appLogInfo).Warn("admin user create action not work")
+		return nil, nil
+	}
+	for _, pip := range p.gitlabClient.Pipelines {
+		if appType == pip.Pipeline {
+			pipeline = pip
+			break
 		}
 	}
 
 	workspaceName := strings.Split(application.Namespace, "-")[0]
-
-	pagerRecord, _ := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(p.ctx, "workspace-"+workspaceName, v1.GetOptions{})
+	pagerRecord, err := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(p.ctx, "workspace-"+workspaceName, v1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			p.logger.WithFields(appLogInfo).Errorf("failed to get pager record workspace-%s", workspaceName)
+		} else {
+			p.logger.WithFields(appLogInfo).Error(err)
+		}
+		return nil, err
+	}
 
 	pagerID, _ := strconv.Atoi(pagerRecord.Spec.MessageID)
-
 	name := git.String(application.Name)
 	groupID := git.Int(pagerID)
 	description := git.String(application.GetAnnotations()["kubesphere.io/description"])
 
 	project, resp, err := p.gitlabClient.Client.Projects.CreateProject(&git.CreateProjectOptions{
-		Name:              name,
-		Path:              name,
-		NamespaceID:       groupID,
-		DefaultBranch:     nil,
-		Description:       description,
-		IssuesAccessLevel: nil,
-		//RepositoryAccessLevel:               git.AccessControl(git.PrivateAccessControl),
-		//MergeRequestsAccessLevel:            git.AccessControl(git.PrivateAccessControl),
-		//ForkingAccessLevel:                  git.AccessControl(git.PrivateAccessControl),
-		//BuildsAccessLevel:                   git.AccessControl(git.PrivateAccessControl),
-		//WikiAccessLevel:                     git.AccessControl(git.PrivateAccessControl),
-		SnippetsAccessLevel: nil,
-		PagesAccessLevel:    nil,
-		//OperationsAccessLevel:               git.AccessControl(git.PrivateAccessControl),
-		EmailsDisabled:                      nil,
-		ResolveOutdatedDiffDiscussions:      nil,
-		ContainerExpirationPolicyAttributes: nil,
-		ContainerRegistryEnabled:            nil,
-		SharedRunnersEnabled:                git.Bool(true),
-		//Visibility:                          git.Visibility(git.PrivateVisibility),
-		ImportURL:                                 nil,
-		PublicBuilds:                              nil,
-		AllowMergeOnSkippedPipeline:               nil,
-		OnlyAllowMergeIfPipelineSucceeds:          nil,
+		Name:                             name,
+		Path:                             name,
+		NamespaceID:                      groupID,
+		DefaultBranch:                    nil,
+		Description:                      description,
+		SharedRunnersEnabled:             git.Bool(true),
+		Visibility:                       git.Visibility(git.PrivateVisibility),
+		OnlyAllowMergeIfPipelineSucceeds: git.Bool(true),
 		OnlyAllowMergeIfAllDiscussionsAreResolved: nil,
-		MergeMethod:                               nil,
-		RemoveSourceBranchAfterMerge:              git.Bool(false),
-		LFSEnabled:                                nil,
-		RequestAccessEnabled:                      git.Bool(true),
-		TagList:                                   nil,
-		PrintingMergeRequestLinkEnabled:           nil,
-		BuildGitStrategy:                          nil,
-		BuildTimeout:                              nil,
-		AutoCancelPendingPipelines:                nil,
-		BuildCoverageRegex:                        nil,
-		CIConfigPath:                              git.String(pip.Ci),
-		CIForwardDeploymentEnabled:                nil,
-		AutoDevopsEnabled:                         git.Bool(false),
-		AutoDevopsDeployStrategy:                  nil,
-		ApprovalsBeforeMerge:                      nil,
-		ExternalAuthorizationClassificationLabel:  nil,
-		Mirror:                                    nil,
-		MirrorTriggerBuilds:                       nil,
-		InitializeWithReadme:                      git.Bool(true),
-		TemplateName:                              git.String(pip.Template),
+		MergeMethod:                              nil,
+		RemoveSourceBranchAfterMerge:             git.Bool(false),
+		LFSEnabled:                               nil,
+		RequestAccessEnabled:                     git.Bool(true),
+		TagList:                                  nil,
+		PrintingMergeRequestLinkEnabled:          nil,
+		BuildGitStrategy:                         nil,
+		BuildTimeout:                             nil,
+		AutoCancelPendingPipelines:               nil,
+		BuildCoverageRegex:                       nil,
+		CIConfigPath:                             git.String(pipeline.CiConfigPath),
+		CIForwardDeploymentEnabled:               nil,
+		AutoDevopsEnabled:                        git.Bool(false),
+		AutoDevopsDeployStrategy:                 nil,
+		ApprovalsBeforeMerge:                     nil,
+		ExternalAuthorizationClassificationLabel: nil,
+		Mirror:                                   nil,
+		MirrorTriggerBuilds:                      nil,
+		InitializeWithReadme:                     git.Bool(true),
+		TemplateName:                             git.String(pipeline.Template),
 		//TemplateProjectID:                        git.Int(TemplateProjectID),
-		//UseCustomTemplate:                        git.Bool(UseCustomTemplate),
+		UseCustomTemplate: git.Bool(true),
 		//GroupWithProjectTemplatesID: git.Int(GroupWithProjectTemplatesID),
 		PackagesEnabled:           nil,
 		ServiceDeskEnabled:        nil,
@@ -123,10 +121,10 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	defer resp.Body.Close()
 	if err := models.NewConflict(err); err == nil || errors.IsConflict(err) {
 		if project == nil {
-			if projects, err := p.list(application.Name); err != nil {
+			if exist, err := p.getProjectWithGroup(application.Name, workspaceName); err != nil {
 				return nil, err
 			} else {
-				project = projects[0]
+				project = exist
 			}
 		}
 		_, err := p.pagerClient.
@@ -143,6 +141,29 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 				},
 			}, v1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
+			p.logger.WithFields(appLogInfo).Info("succeed to create gitlab project")
+			if creator == "" {
+				return project, nil
+			}
+			userPager, err := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(p.ctx, "user-"+creator, v1.GetOptions{})
+			if err != nil {
+				p.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
+					"message": "failed to get application creator",
+				}).Error(err)
+				return project, err
+			}
+			userId := userPager.Spec.MessageID
+			_, resp, err := p.gitlabClient.Client.ProjectMembers.AddProjectMember(project.ID, &git.AddProjectMemberOptions{
+				UserID:      userId,
+				AccessLevel: git.AccessLevel(git.MaintainerPermissions),
+			})
+			defer resp.Body.Close()
+			if err != nil {
+				p.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
+					"message": "failed to add maintainer role to project",
+				}).Error(err)
+				return project, err
+			}
 			return project, nil
 		} else {
 			return project, err
@@ -242,6 +263,34 @@ func (p projectInfo) List(key string) (interface{}, error) {
 	return p.list(key)
 }
 
+func (p projectInfo) getProjectWithGroup(projectName, groupName string) (*git.Project, error) {
+	projects, resp, err := p.gitlabClient.Client.Projects.ListProjects(&git.ListProjectsOptions{
+		Search: git.String(projectName),
+	})
+	defer resp.Body.Close()
+	if err != nil {
+		p.logger.WithFields(logrus.Fields{
+			"event":  "list",
+			"errros": err.Error(),
+			"msg":    resp.Body,
+		})
+		return nil, err
+	} else {
+		if len(projects) == 1 {
+			return projects[0], nil
+		} else {
+			for _, project := range projects {
+				if strings.Contains(project.PathWithNamespace, groupName) {
+					return project, nil
+				} else {
+					continue
+				}
+			}
+			return nil, nil
+		}
+	}
+}
+
 func (p projectInfo) list(key string) ([]*git.Project, error) {
 	projects, resp, err := p.gitlabClient.Client.Projects.ListProjects(&git.ListProjectsOptions{
 		Search: git.String(key),
@@ -261,7 +310,8 @@ func (p projectInfo) list(key string) ([]*git.Project, error) {
 
 func NewGitLabProjectGenerator(name, group string, ctx context.Context, gitlabClient *models.GitlabClient, pagerClient *pager.Clientset) syncer.Generator {
 	logger := utils.GetLogger(logrus.Fields{
-		"component": "gitlab.member",
+		"component": "gitlab",
+		"resource":  "project",
 	})
 	return &projectInfo{
 		projectName:      name,

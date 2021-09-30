@@ -2,6 +2,7 @@ package gitlab
 
 import (
 	"context"
+	baseErr "errors"
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
@@ -54,8 +55,10 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 		if gitlabUser == nil {
 			if gitlabUsers, err := u.list(user.Name); err != nil {
 				return nil, err
-			} else {
+			} else if len(gitlabUsers) != 0{
 				gitlabUser = gitlabUsers[0]
+			}else {
+				return nil, models.NewNotFound(baseErr.New("gitlab user not found"))
 			}
 		}
 		_, err := u.pagerClient.
