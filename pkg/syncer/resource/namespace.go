@@ -5,6 +5,8 @@ import (
 	tenantv1alpha1 "github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha1"
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +29,7 @@ var (
 
 type namespaceInfo struct {
 	client *kubernetes.Clientset
+	logger *logrus.Logger
 	ctx    context.Context
 }
 
@@ -38,7 +41,7 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 		"uat":     workspaceName + "-uat",
 		"smoking": workspaceName + "-smoking",
 	}
-	creator := workspace.GetAnnotations()["kubesphere.io/creator"]
+	creator := workspace.GetAnnotations()[syncer.KubesphereCreator]
 
 	for index, namespaceName := range candidates {
 		namespace := assembleResource(workspace, namespaceName, func(obj interface{}, namespace string) interface{} {
@@ -80,7 +83,7 @@ func (n namespaceInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (n namespaceInfo) Delete(obj interface{}) error {
+func (n namespaceInfo) Delete(name string) error {
 	panic("implement me")
 }
 
@@ -100,8 +103,13 @@ func (n namespaceInfo) List(key string) (interface{}, error) {
 }
 
 func NewNamespaceGenerator(ctx context.Context, client *kubernetes.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "kubernetes",
+		"resource":  "namespace",
+	})
 	return &namespaceInfo{
 		client: client,
 		ctx:    ctx,
+		logger: logger,
 	}
 }

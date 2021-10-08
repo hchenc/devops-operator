@@ -34,7 +34,18 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 	err := r.Get(ctx, req.NamespacedName, application)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.Log.Info("it's a delete event")
+			err := projectGeneratorService.Delete(req.Name)
+			if err != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"application": req.Name,
+					"message":     "failed to delete application",
+				}).Error(err)
+			}
+		} else {
+			log.Logger.WithFields(logrus.Fields{
+				"application": req.Name,
+				"message":     "failed to reconcile application",
+			}).Error(err)
 		}
 	} else {
 		// create gitlab project
@@ -47,7 +58,7 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 					"name":     "application-" + application.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("pager created failed, retry after %d second", RetryPeriod)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -55,10 +66,10 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 					"name":     application.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("project created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("project created failed, retry after %d second", RetryPeriod)
 			}
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 
@@ -71,9 +82,9 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 				"name":     application.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("application created failed, retry after %d second", RETRYPERIOD)
+			}).Errorf("application created failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 
@@ -82,7 +93,7 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 			"resource": "Application",
 			"name":     application.Name,
 			"result":   "success",
-		}).Infof("application <%s> sync successful", application.Name)
+		}).Infof("finish to sync application %s", application.Name)
 	}
 	return reconcile.Result{}, nil
 }

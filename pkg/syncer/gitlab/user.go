@@ -6,6 +6,7 @@ import (
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/hchenc/pager/pkg/apis/devops/v1alpha1"
 	pager "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
@@ -55,9 +56,9 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 		if gitlabUser == nil {
 			if gitlabUsers, err := u.list(user.Name); err != nil {
 				return nil, err
-			} else if len(gitlabUsers) != 0{
+			} else if len(gitlabUsers) != 0 {
 				gitlabUser = gitlabUsers[0]
-			}else {
+			} else {
 				return nil, models.NewNotFound(baseErr.New("gitlab user not found"))
 			}
 		}
@@ -88,8 +89,26 @@ func (u userInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (u userInfo) Delete(obj interface{}) error {
-	panic("implement me")
+func (u userInfo) Delete(userName string) error {
+	pagerName := "user-" + userName
+	userLogInfo := logrus.Fields{
+		"user": userName,
+	}
+	u.logger.WithFields(userLogInfo).Info("start to delete gitlab user pager")
+
+	err := u.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(u.ctx, pagerName, v1.DeleteOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		u.logger.WithFields(userLogInfo).WithFields(logrus.Fields{
+			"pager": pagerName,
+		}).Info("finish to delete gitlab user pager")
+		return nil
+	} else {
+		u.logger.WithFields(userLogInfo).WithFields(logrus.Fields{
+			"message": "failed to delete gitlab user pager",
+			"pager":   pagerName,
+		}).Error(err)
+		return err
+	}
 }
 
 func (u userInfo) GetByName(name string) (interface{}, error) {
@@ -120,9 +139,14 @@ func (u userInfo) list(key string) ([]*git.User, error) {
 }
 
 func NewUserGenerator(ctx context.Context, client *models.GitlabClient, pageClient *pager.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "gitlab",
+		"resource":  "user",
+	})
 	return &userInfo{
 		pagerClient:  pageClient,
 		gitlabClient: client,
 		ctx:          ctx,
+		logger:       logger,
 	}
 }

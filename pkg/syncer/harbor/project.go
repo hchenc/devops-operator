@@ -4,13 +4,16 @@ import (
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
 	harbor2 "github.com/hchenc/go-harbor"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"strconv"
 )
 
 type projectInfo struct {
 	harborClient *harbor2.APIClient
+	logger       *logrus.Logger
 	username     string
 	password     string
 	host         string
@@ -37,7 +40,7 @@ func (p projectInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (p projectInfo) Delete(obj interface{}) error {
+func (p projectInfo) Delete(name string) error {
 	panic("implement me")
 }
 
@@ -66,7 +69,12 @@ func (p projectInfo) List(key string) (interface{}, error) {
 }
 
 func NewHarborProjectGenerator(name, group string, harborClient *harbor2.APIClient) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "harbor",
+		"resource":  "project",
+	})
 	return &projectInfo{
 		harborClient: harborClient,
+		logger:       logger,
 	}
 }

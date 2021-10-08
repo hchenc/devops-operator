@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/go-logr/logr"
+	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,11 +35,15 @@ func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 	if err != nil {
 		if errors.IsNotFound(err) {
 			v.Log.Info("receive delete event")
+		} else {
+			log.Logger.WithFields(logrus.Fields{
+				"pvc":     req.NamespacedName,
+				"message": "failed to reconcile pvc",
+			}).Error(err)
 		}
 	} else {
 		//sync volume to all environment(fat|uat|smoking)
 		_, err := volumeGeneratorService.Add(volume)
-
 		if err != nil {
 			log.Logger.WithFields(logrus.Fields{
 				"event":    "create",
@@ -46,9 +51,9 @@ func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 				"name":     volume.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("volume created failed, retry after %d second", RETRYPERIOD)
+			}).Errorf("volume created failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 		log.Logger.WithFields(logrus.Fields{
@@ -57,7 +62,7 @@ func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 			"name":     volume.Name,
 			"result":   "success",
 			"message":  "volume controller successful",
-		}).Infof("volume %s sync successful", volume.Name)
+		}).Infof("finish to sync volume %s", volume.Name)
 	}
 	return reconcile.Result{}, nil
 }
@@ -74,7 +79,7 @@ type volumePredicate struct {
 
 func (v volumePredicate) Create(e event.CreateEvent) bool {
 	namespace := e.Meta.GetNamespace()
-	if _, exist := e.Meta.GetLabels()["app.kubernetes.io/name"]; !exist {
+	if _, exist := e.Meta.GetLabels()[syncer.KubesphereAppName]; !exist {
 		return false
 	} else if strings.Contains(namespace, "smoking") || strings.Contains(namespace, "fat") || strings.Contains(namespace, "uat") {
 		return true

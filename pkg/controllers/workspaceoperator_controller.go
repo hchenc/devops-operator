@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	RegisterReconciler("WorkspaceToGroup", SetUpGroupReconcile)
+	RegisterReconciler("WorkspaceTemplateToGroup", SetUpGroupReconcile)
 }
 
 type WorkspaceOperatorReconciler struct {
@@ -34,7 +34,18 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 	err := g.Get(ctx, req.NamespacedName, workspaceTemplate)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			g.Log.Info("it's a delete event")
+			err := groupGeneratorService.Delete(req.Name)
+			if err != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"workspaceTemplate": req.Name,
+					"message":           "failed to delete workspaceTemplate",
+				}).Error(err)
+			}
+		} else {
+			log.Logger.WithFields(logrus.Fields{
+				"workspaceTemplate": req.Name,
+				"message":           "failed to reconcile workspaceTemplate",
+			}).Error(err)
 		}
 	} else {
 		// create gitlab group
@@ -47,7 +58,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 					"name":     "workspace-" + workspaceTemplate.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("pager created failed, retry after %d second", RetryPeriod)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -55,10 +66,10 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 					"name":     workspaceTemplate.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("group created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("group created failed, retry after %d second", RetryPeriod)
 			}
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 
@@ -71,9 +82,9 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 				"name":     workspaceTemplate.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("namespace created failed, retry after %d second", RETRYPERIOD)
+			}).Errorf("namespace created failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 
@@ -86,9 +97,9 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 				"name":     workspaceTemplate.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("harbor project created failed, retry after %d second", RETRYPERIOD)
+			}).Errorf("harbor project created failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 		log.Logger.WithFields(logrus.Fields{
@@ -96,7 +107,7 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 			"resource": "Workspace",
 			"name":     workspaceTemplate.Name,
 			"result":   "success",
-		}).Infof("workspace <%s> sync succeed", workspaceTemplate.Name)
+		}).Infof("finish to sync workspace %s", workspaceTemplate.Name)
 	}
 	return reconcile.Result{}, nil
 }
@@ -134,7 +145,7 @@ func (r workspacePredicate) Generic(e event.GenericEvent) bool {
 func SetUpGroupReconcile(mgr manager.Manager) {
 	if err := (&WorkspaceOperatorReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("WorkspaceTemplate"),
+		Log:    ctrl.Log.WithName("WorkspaceTemplateToGroup"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create workspace controller for", err)

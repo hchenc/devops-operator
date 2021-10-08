@@ -3,6 +3,8 @@ package resource
 import (
 	"context"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +14,7 @@ import (
 
 type serviceInfo struct {
 	kubeClient *kubernetes.Clientset
+	logger     *logrus.Logger
 	ctx        context.Context
 }
 
@@ -72,7 +75,7 @@ func (s serviceInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (s serviceInfo) Delete(obj interface{}) error {
+func (s serviceInfo) Delete(name string) error {
 	panic("implement me")
 }
 
@@ -89,8 +92,13 @@ func (s serviceInfo) List(key string) (interface{}, error) {
 }
 
 func NewServiceGenerator(ctx context.Context, kubeClient *kubernetes.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "kubernetes",
+		"resource":  "service",
+	})
 	return serviceInfo{
 		kubeClient: kubeClient,
 		ctx:        ctx,
+		logger:     logger,
 	}
 }

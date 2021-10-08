@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
+	"strings"
 )
 
 type memberInfo struct {
@@ -24,7 +25,7 @@ type memberInfo struct {
 
 func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 	rolebinding := obj.(*iamv1alpha2.WorkspaceRoleBinding)
-	groupName := rolebinding.Labels["kubesphere.io/workspace"]
+	groupName := rolebinding.Labels[syncer.KubesphereWorkspace]
 	userName := rolebinding.Subjects[0].Name
 
 	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(m.ctx, "workspace-"+groupName, v1.GetOptions{})
@@ -75,8 +76,26 @@ func (m memberInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (m memberInfo) Delete(obj interface{}) error {
-	panic("implement me")
+func (m memberInfo) Delete(rolebindingName string) error {
+	pagerName := "member-" + strings.Split(rolebindingName, "-")[0]
+	memberLogInfo := logrus.Fields{
+		"rolebinding": rolebindingName,
+	}
+	m.logger.WithFields(memberLogInfo).Info("start to delete gitlab member pager")
+
+	err := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(m.ctx, pagerName, v1.DeleteOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		m.logger.WithFields(memberLogInfo).WithFields(logrus.Fields{
+			"pager": pagerName,
+		}).Info("finish to delete gitlab member pager")
+		return nil
+	} else {
+		m.logger.WithFields(memberLogInfo).WithFields(logrus.Fields{
+			"message": "failed to delete gitlab member pager",
+			"pager":   pagerName,
+		}).Error(err)
+		return err
+	}
 }
 
 func (m memberInfo) GetByName(name string) (interface{}, error) {
@@ -97,7 +116,8 @@ func (m memberInfo) list(key string) (interface{}, error) {
 
 func NewMemberGenerator(ctx context.Context, gitlabClient *models.GitlabClient, pagerClient *pager.Clientset) syncer.Generator {
 	logger := utils.GetLogger(logrus.Fields{
-		"component": "gitlab.member",
+		"component": "gitlab",
+		"resource":  "member",
 	})
 	return &memberInfo{
 		gitlabClient: gitlabClient,

@@ -34,6 +34,18 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 	if err != nil {
 		if errors.IsNotFound(err) {
 			u.Log.Info("it's a delete event")
+			err := userGeneratorService.Delete(req.Name)
+			if err != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"user": req.Name,
+					"message":           "failed to delete user",
+				}).Error(err)
+			}
+		} else {
+			log.Logger.WithFields(logrus.Fields{
+				"user":    req.Name,
+				"message": "failed to reconcile user",
+			}).Error(err)
 		}
 	} else {
 		// create gitlab project
@@ -46,7 +58,7 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 					"name":     "user-" + user.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("pager created failed, retry after %d second", RetryPeriod)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -54,10 +66,10 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 					"name":     user.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("user created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("user created failed, retry after %d second", RetryPeriod)
 			}
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 		log.Logger.WithFields(logrus.Fields{
@@ -65,7 +77,7 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 			"resource": "User",
 			"name":     user.Name,
 			"result":   "success",
-		}).Infof("user <%s> sync succeed", user.Name)
+		}).Infof("finish to sync user %s", user.Name)
 	}
 	return reconcile.Result{}, nil
 }

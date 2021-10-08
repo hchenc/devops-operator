@@ -3,6 +3,8 @@ package resource
 import (
 	"context"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -13,6 +15,7 @@ import (
 
 type deploymentInfo struct {
 	kubeClient *kubernetes.Clientset
+	logger     *logrus.Logger
 	ctx        context.Context
 }
 
@@ -74,7 +77,7 @@ func (d deploymentInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (d deploymentInfo) Delete(obj interface{}) error {
+func (d deploymentInfo) Delete(name string) error {
 	panic("implement me")
 }
 
@@ -91,8 +94,13 @@ func (d deploymentInfo) List(key string) (interface{}, error) {
 }
 
 func NewDeploymentGenerator(ctx context.Context, kubeClient *kubernetes.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "kubernetes",
+		"resource":  "deployment",
+	})
 	return deploymentInfo{
 		kubeClient: kubeClient,
 		ctx:        ctx,
+		logger:     logger,
 	}
 }

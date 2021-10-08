@@ -34,11 +34,15 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 	if err != nil {
 		if errors.IsNotFound(err) {
 			d.Log.Info("it's a delete event")
+		} else {
+			log.Logger.WithFields(logrus.Fields{
+				"deployment": req.NamespacedName,
+				"message":    "failed to reconcile deployment",
+			}).Error(err)
 		}
 	} else {
 		//sync deployment to all environment(fat|uat|smoking)
 		_, err := deploymentGeneratorService.Add(deployment)
-
 		if err != nil {
 			log.Logger.WithFields(logrus.Fields{
 				"event":    "create",
@@ -46,18 +50,17 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 				"name":     deployment.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("deployment created failed, retry after %d second", RETRYPERIOD)
+			}).Errorf("deployment created failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 		log.Logger.WithFields(logrus.Fields{
 			"event":    "create",
-			"resource": "Application",
+			"resource": "Deployment",
 			"name":     deployment.Name,
 			"result":   "success",
-			"message":  "deployment controller successful",
-		}).Infof("deployment <%s> sync successful", deployment.Name)
+		}).Infof("finish to sync deployment %s", deployment.Name)
 	}
 	return reconcile.Result{}, nil
 }
@@ -70,7 +73,8 @@ func (d deploymentPredicate) Create(e event.CreateEvent) bool {
 	labels := e.Meta.GetLabels()
 	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
 		return true
-	} else if _, ok := labels["app"]; ok{
+	} else if _, ok := labels["app"]; ok {
+		//Make sure only the deployment defined by app can through the filter
 		return true
 	} else {
 		return false

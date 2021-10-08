@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	RETRYPERIOD = 15
+	RetryPeriod = 15
 )
 
 var (
@@ -31,17 +31,17 @@ var (
 var (
 	reconcilerMap = make(map[string]Reconciler)
 
-	gitlabProjectGenerator syncer.Generator
-	groupGenerator         syncer.Generator
-	namespaceGenerator     syncer.Generator
-	applicationGenerator   syncer.Generator
-	userGenerator          syncer.Generator
-	rolebindingGenerator   syncer.Generator
-	memberGenerator        syncer.Generator
-	harborProjectGenerator syncer.Generator
-	deploymentGenerator    syncer.Generator
-	serviceGenerator       syncer.Generator
-	volumeGenerator        syncer.Generator
+	projectGenerator     syncer.Generator
+	groupGenerator       syncer.Generator
+	namespaceGenerator   syncer.Generator
+	applicationGenerator syncer.Generator
+	userGenerator        syncer.Generator
+	rolebindingGenerator syncer.Generator
+	memberGenerator      syncer.Generator
+	harborGenerator      syncer.Generator
+	deploymentGenerator  syncer.Generator
+	serviceGenerator     syncer.Generator
+	volumeGenerator      syncer.Generator
 
 	projectGeneratorService     syncer.GenerateService
 	groupGeneratorService       syncer.GenerateService
@@ -107,7 +107,7 @@ func NewControllerOrDie(cs *models.ClientSet, mgr manager.Manager) *Controller {
 }
 
 func installGenerator(clientset *models.ClientSet) {
-	gitlabProjectGenerator = gitlab.NewGitLabProjectGenerator("", "", clientset.Ctx, clientset.GitlabClient, clientset.PagerClient)
+	projectGenerator = gitlab.NewGitLabProjectGenerator("", "", clientset.Ctx, clientset.GitlabClient, clientset.PagerClient)
 	groupGenerator = gitlab.NewGroupGenerator("", clientset.Ctx, clientset.GitlabClient, clientset.PagerClient)
 	userGenerator = gitlab.NewUserGenerator(clientset.Ctx, clientset.GitlabClient, clientset.PagerClient)
 	memberGenerator = gitlab.NewMemberGenerator(clientset.Ctx, clientset.GitlabClient, clientset.PagerClient)
@@ -119,18 +119,18 @@ func installGenerator(clientset *models.ClientSet) {
 	serviceGenerator = resource.NewServiceGenerator(clientset.Ctx, clientset.Kubeclient)
 	volumeGenerator = resource.NewVolumeGenerator(clientset.Ctx, clientset.Kubeclient)
 
-	harborProjectGenerator = harbor.NewHarborProjectGenerator("", "", clientset.HarborClient)
+	harborGenerator = harbor.NewHarborProjectGenerator("", "", clientset.HarborClient)
 }
 
 func installGeneratorService() {
-	projectGeneratorService = syncer.NewGenerateService(gitlabProjectGenerator)
+	projectGeneratorService = syncer.NewGenerateService(projectGenerator)
 	groupGeneratorService = syncer.NewGenerateService(groupGenerator)
 	namespaceGeneratorService = syncer.NewGenerateService(namespaceGenerator)
 	applicationGeneratorService = syncer.NewGenerateService(applicationGenerator)
 	userGeneratorService = syncer.NewGenerateService(userGenerator)
 	rolebindingGeneratorService = syncer.NewGenerateService(rolebindingGenerator)
 	memberGeneratorService = syncer.NewGenerateService(memberGenerator)
-	harborGeneratorService = syncer.NewGenerateService(harborProjectGenerator)
+	harborGeneratorService = syncer.NewGenerateService(harborGenerator)
 	deploymentGeneratorService = syncer.NewGenerateService(deploymentGenerator)
 	serviceGeneratorService = syncer.NewGenerateService(serviceGenerator)
 	volumeGeneratorService = syncer.NewGenerateService(volumeGenerator)

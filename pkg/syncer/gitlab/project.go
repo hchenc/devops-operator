@@ -44,8 +44,8 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	}
 	p.logger.WithFields(appLogInfo).Info("start to create gitlab project")
 	var pipeline models.Pipelines
-	appType := application.Labels["app.kubernetes.io/type"]
-	creator := application.Annotations["kubesphere.io/creator"]
+	appType := application.Labels[syncer.KubesphereAppType]
+	creator := application.Annotations[syncer.KubesphereCreator]
 	if creator == "admin" {
 		p.logger.WithFields(appLogInfo).Warn("admin user create action not work")
 		return nil, nil
@@ -71,7 +71,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	pagerID, _ := strconv.Atoi(pagerRecord.Spec.MessageID)
 	name := git.String(application.Name)
 	groupID := git.Int(pagerID)
-	description := git.String(application.GetAnnotations()["kubesphere.io/description"])
+	description := git.String(application.GetAnnotations()[syncer.KubesphereDescription])
 
 	project, resp, err := p.gitlabClient.Client.Projects.CreateProject(&git.CreateProjectOptions{
 		Name:                             name,
@@ -172,82 +172,30 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	return nil, err
 }
 
-//func (p projectInfo) assembleProject(name, description *string, groupID *int) *git.CreateProjectOptions {
-//	project := &git.CreateProjectOptions{
-//		Name:                                name,
-//		Path:                                name,
-//		NamespaceID:                         groupID,
-//		DefaultBranch:                       nil,
-//		Description:                         description,
-//		IssuesAccessLevel:                   nil,
-//		RepositoryAccessLevel:               git.AccessControl(git.PrivateAccessControl),
-//		MergeRequestsAccessLevel:            git.AccessControl(git.PrivateAccessControl),
-//		ForkingAccessLevel:                  git.AccessControl(git.PrivateAccessControl),
-//		BuildsAccessLevel:                   git.AccessControl(git.PrivateAccessControl),
-//		WikiAccessLevel:                     git.AccessControl(git.PrivateAccessControl),
-//		SnippetsAccessLevel:                 nil,
-//		PagesAccessLevel:                    nil,
-//		OperationsAccessLevel:               git.AccessControl(git.PrivateAccessControl),
-//		EmailsDisabled:                      nil,
-//		ResolveOutdatedDiffDiscussions:      nil,
-//		ContainerExpirationPolicyAttributes: nil,
-//		ContainerRegistryEnabled:            nil,
-//		SharedRunnersEnabled:                git.Bool(true),
-//		Visibility:                          git.Visibility(git.PrivateVisibility),
-//		ImportURL:                           nil,
-//		PublicBuilds:                        nil,
-//		AllowMergeOnSkippedPipeline:         nil,
-//		OnlyAllowMergeIfPipelineSucceeds:    nil,
-//		OnlyAllowMergeIfAllDiscussionsAreResolved: nil,
-//		MergeMethod:                              nil,
-//		RemoveSourceBranchAfterMerge:             git.Bool(false),
-//		LFSEnabled:                               nil,
-//		RequestAccessEnabled:                     git.Bool(true),
-//		TagList:                                  nil,
-//		PrintingMergeRequestLinkEnabled:          nil,
-//		BuildGitStrategy:                         nil,
-//		BuildTimeout:                             nil,
-//		AutoCancelPendingPipelines:               nil,
-//		BuildCoverageRegex:                       nil,
-//		CIConfigPath:                             git.String(CIConfigPath),
-//		CIForwardDeploymentEnabled:               nil,
-//		AutoDevopsEnabled:                        git.Bool(false),
-//		AutoDevopsDeployStrategy:                 nil,
-//		ApprovalsBeforeMerge:                     nil,
-//		ExternalAuthorizationClassificationLabel: nil,
-//		Mirror:                                   nil,
-//		MirrorTriggerBuilds:                      nil,
-//		InitializeWithReadme:                     git.Bool(true),
-//		TemplateName:                             git.String(TemplateName),
-//		TemplateProjectID:                        git.Int(TemplateProjectID),
-//		UseCustomTemplate:                        git.Bool(UseCustomTemplate),
-//		GroupWithProjectTemplatesID:              git.Int(GroupWithProjectTemplatesID),
-//		PackagesEnabled:                          nil,
-//		ServiceDeskEnabled:                       nil,
-//		AutocloseReferencedIssues:                nil,
-//		SuggestionCommitMessage:                  nil,
-//		IssuesTemplate:                           git.String(IssuesTemplate),
-//		MergeRequestsTemplate:                    git.String(MergeRequestsTemplate),
-//		IssuesEnabled:                            git.Bool(true),
-//		MergeRequestsEnabled:                     git.Bool(true),
-//		JobsEnabled:                              nil,
-//		WikiEnabled:                              nil,
-//		SnippetsEnabled:                          nil,
-//	}
-//
-//	switch p.gitlabVersion {
-//	case pipeline.GITLABEEVERSION:
-//
-//	}
-//
-//}
-
 func (p projectInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (p projectInfo) Delete(obj interface{}) error {
-	panic("implement me")
+func (p projectInfo) Delete(appName string) error {
+	pagerName := "application-"+appName
+	appLogInfo := logrus.Fields{
+		"application": appName,
+	}
+	p.logger.WithFields(appLogInfo).Info("start to delete kubesphere application pager")
+
+	err := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(p.ctx, pagerName, v1.DeleteOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		p.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
+			"pager": pagerName,
+		}).Info("finish to delete kubesphere application pager")
+		return nil
+	} else {
+		p.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
+			"message": "failed to delete kubesphere application pager",
+			"pager":   pagerName,
+		}).Error(err)
+		return err
+	}
 }
 
 func (p projectInfo) GetByName(key string) (interface{}, error) {

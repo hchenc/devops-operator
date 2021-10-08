@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	RegisterReconciler("ServiceToApp", SetUpServiceReconcile)
+	RegisterReconciler("Service", SetUpServiceReconcile)
 }
 
 type ServiceOperatorReconciler struct {
@@ -34,9 +34,14 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 	if err != nil {
 		if errors.IsNotFound(err) {
 			s.Log.Info("it's a delete event")
+		} else {
+			log.Logger.WithFields(logrus.Fields{
+				"service": req.NamespacedName,
+				"message": "failed to reconcile service",
+			}).Error(err)
 		}
 	} else {
-		//sync application to all environment(fat|uat|smoking)
+		//sync service to all environment(fat|uat|smoking)
 		_, err = serviceGeneratorService.Add(service)
 		if err != nil {
 			log.Logger.WithFields(logrus.Fields{
@@ -45,9 +50,9 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 				"name":     service.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("service created failed, retry after %d second", RETRYPERIOD)
+			}).Errorf("service created failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 		log.Logger.WithFields(logrus.Fields{
@@ -55,7 +60,7 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 			"resource": "Service",
 			"name":     service.Name,
 			"result":   "success",
-		}).Infof("service <%s> sync succeed", service.Name)
+		}).Infof("finish to sync service %s", service.Name)
 	}
 	return reconcile.Result{}, nil
 }
@@ -68,7 +73,7 @@ func (s servicePredicate) Create(e event.CreateEvent) bool {
 	labels := e.Meta.GetLabels()
 	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
 		return true
-	} else if _, ok := labels["app"]; ok{
+	} else if _, ok := labels["app"]; ok {
 		return true
 	} else {
 		return false
@@ -96,7 +101,7 @@ func (s *ServiceOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func SetUpServiceReconcile(mgr manager.Manager) {
 	if err := (&ServiceOperatorReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("ServiceToApp"),
+		Log:    ctrl.Log.WithName("Service"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create service controller for ", err)

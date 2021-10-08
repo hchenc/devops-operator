@@ -1,9 +1,5 @@
 package syncer
 
-const (
-	DevopsNamespace = "devops-system"
-)
-
 type GenerateService interface {
 	//add obj to target service
 	Add(obj interface{}) (interface{}, error)
@@ -11,7 +7,7 @@ type GenerateService interface {
 	//update obj
 	Update(objOld interface{}, objNew interface{}) error
 
-	Delete(obj interface{}) error
+	Delete(name string) error
 }
 
 func NewGenerateService(g Generator) GenerateService {
@@ -23,7 +19,7 @@ type Generator interface {
 	//update obj
 	Update(objOld interface{}, objNew interface{}) error
 
-	Delete(obj interface{}) error
+	Delete(name string) error
 
 	GetByName(name string) (interface{}, error)
 
@@ -44,6 +40,6 @@ func (g generator) Update(objOld interface{}, objNew interface{}) error {
 	return g.g.Update(objOld, objNew)
 }
 
-func (g generator) Delete(obj interface{}) error {
-	return g.g.Delete(obj)
+func (g generator) Delete(name string) error {
+	return g.g.Delete(name)
 }

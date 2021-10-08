@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,12 +14,13 @@ import (
 
 type rolebindingInfo struct {
 	kubeclient *kubernetes.Clientset
+	logger     *logrus.Logger
 	ctx        context.Context
 }
 
 func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 	workspaceRolebinding := obj.(*v1alpha2.WorkspaceRoleBinding)
-	workspaceName := workspaceRolebinding.Labels["kubesphere.io/workspace"]
+	workspaceName := workspaceRolebinding.Labels[syncer.KubesphereWorkspace]
 	userName := workspaceRolebinding.Subjects[0].Name
 
 	candidates := map[string]string{
@@ -64,7 +67,7 @@ func (r rolebindingInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (r rolebindingInfo) Delete(obj interface{}) error {
+func (r rolebindingInfo) Delete(name string) error {
 	panic("implement me")
 }
 
@@ -81,8 +84,13 @@ func (r rolebindingInfo) List(key string) (interface{}, error) {
 }
 
 func NewRolebindingGenerator(ctx context.Context, kubeclient *kubernetes.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "kubesphere",
+		"resource":  "rolebinding",
+	})
 	return rolebindingInfo{
 		kubeclient: kubeclient,
 		ctx:        ctx,
+		logger:     logger,
 	}
 }

@@ -34,7 +34,18 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 	err := r.Get(ctx, req.NamespacedName, rolebinding)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.Log.Info("it's a delete event")
+			err := memberGeneratorService.Delete(req.Name)
+			if err != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"rolebinding": req.Name,
+					"message":     "failed to delete rolebinding",
+				}).Error(err)
+			}
+		} else {
+			log.Logger.WithFields(logrus.Fields{
+				"rolebinding": req.Name,
+				"message":     "failed to reconcile rolebinding",
+			}).Error(err)
 		}
 	} else {
 		// add user to group member
@@ -47,7 +58,7 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 					"name":     "member-" + rolebinding.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("pager created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("pager created failed, retry after %d second", RetryPeriod)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
@@ -55,12 +66,13 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 					"name":     rolebinding.Name,
 					"result":   "failed",
 					"error":    err.Error(),
-				}).Errorf("member created failed, retry after %d second", RETRYPERIOD)
+				}).Errorf("member created failed, retry after %d second", RetryPeriod)
 			}
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
+
 		//sync group's user from none to all environment(fat|uat|smoking)
 		_, err = rolebindingGeneratorService.Add(rolebinding)
 		if err != nil {
@@ -70,9 +82,9 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 				"name":     rolebinding.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("rolebinding sync failed, retry after %d second", RETRYPERIOD)
+			}).Errorf("rolebinding sync failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
-				RequeueAfter: RETRYPERIOD * time.Second,
+				RequeueAfter: RetryPeriod * time.Second,
 			}, err
 		}
 
@@ -81,7 +93,7 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			"resource": "Rolebinding",
 			"name":     rolebinding.Name,
 			"result":   "success",
-		}).Infof("rolebinding <%s> sync successful", rolebinding.Name)
+		}).Infof("finish to sync rolebinding %s", rolebinding.Name)
 	}
 	return reconcile.Result{}, nil
 }

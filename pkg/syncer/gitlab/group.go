@@ -31,7 +31,7 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 	g.logger.WithFields(workspaceLogInfo).Info("start to create gitlab group")
 
 	name := git.String(workspace.Name)
-	description := git.String(workspace.GetAnnotations()["kubesphere.io/description"])
+	description := git.String(workspace.GetAnnotations()[syncer.KubesphereDescription])
 	group, resp, err := g.gitlabClient.Client.Groups.CreateGroup(&git.CreateGroupOptions{
 		Name:                           name,
 		Path:                           name,
@@ -66,7 +66,7 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 				g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
 					"groupName": group.Name,
 					"groupId":   group.ID,
-				}).Info("succeed to get gitlab group")
+				}).Info("group already exist, finish to get gitlab group")
 			}
 		}
 		_, err := g.pagerClient.
@@ -106,8 +106,27 @@ func (g groupInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (g groupInfo) Delete(obj interface{}) error {
-	panic("implement me")
+func (g groupInfo) Delete(workspaceName string) error {
+	pagerName := "workspace-" + workspaceName
+
+	workspaceLogInfo := logrus.Fields{
+		"workspace": workspaceName,
+	}
+	g.logger.WithFields(workspaceLogInfo).Info("start to delete gitlab pager")
+
+	err := g.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(g.ctx, pagerName, v1.DeleteOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
+			"pager": pagerName,
+		}).Info("finish to delete gitlab group pager")
+		return nil
+	} else {
+		g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
+			"message": "failed to delete gitlab group pager",
+			"pager":   pagerName,
+		}).Error(err)
+		return err
+	}
 }
 
 func (g groupInfo) GetByName(key string) (interface{}, error) {
@@ -131,10 +150,9 @@ func (g groupInfo) list(key string) ([]*git.Group, error) {
 	defer resp.Body.Close()
 	if err != nil {
 		g.logger.WithFields(logrus.Fields{
-			"event":  "list",
-			"errros": err.Error(),
-			"msg":    resp.Body,
-		})
+			"event": "list",
+			"msg":   resp.Body,
+		}).Error(err)
 		return nil, err
 	} else {
 		return groups, nil

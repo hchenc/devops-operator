@@ -2,9 +2,12 @@ package resource
 
 import (
 	"context"
+	baseErr "errors"
 	applicationv1beta1 "github.com/hchenc/application/pkg/apis/app/v1beta1"
 	"github.com/hchenc/application/pkg/client/clientset/versioned"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -14,11 +17,16 @@ import (
 type applicationInfo struct {
 	appClient  *versioned.Clientset
 	kubeClient *kubernetes.Clientset
+	logger     *logrus.Logger
 	ctx        context.Context
 }
 
 func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 	application := obj.(*applicationv1beta1.Application)
+	appLogInfo := logrus.Fields{
+		"application": application.Name,
+	}
+	a.logger.WithFields(appLogInfo).Info("start to create kubesphere application")
 	namespacePrefix := strings.Split(application.Namespace, "-")[0]
 	candidates := map[string]string{
 		namespacePrefix + "-fat":     "fat",
@@ -27,7 +35,9 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 	}
 	delete(candidates, application.Namespace)
 
-	for namespace, _ := range candidates {
+	var errs []error
+
+	for namespace := range candidates {
 		application := assembleResource(application, namespace, func(obj interface{}, namespace string) interface{} {
 			return &applicationv1beta1.Application{
 				ObjectMeta: v1.ObjectMeta{
@@ -43,19 +53,29 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 		}).(*applicationv1beta1.Application)
 		_, err := a.appClient.AppV1beta1().Applications(namespace).Create(a.ctx, application, v1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
-			continue
+			a.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+			}).Info("succeed to create namespaced kubesphere application")
 		} else {
-			return nil, err
+			a.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
+				"message": "failed to create namespaced kubesphere application",
+			}).Error(err)
+			errs = append(errs, err)
 		}
 	}
-	return nil, nil
+	if len(errs) != 0 {
+		return nil, baseErr.New("failed to sync kubesphere application")
+	} else {
+		a.logger.WithFields(appLogInfo).Info("finish to create kubesphere application")
+		return nil, nil
+	}
 }
 
 func (a applicationInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (a applicationInfo) Delete(obj interface{}) error {
+func (a applicationInfo) Delete(appName string) error {
 	panic("implement me")
 }
 
@@ -72,9 +92,14 @@ func (a applicationInfo) List(key string) (interface{}, error) {
 }
 
 func NewApplicationGenerator(ctx context.Context, kubeClient *kubernetes.Clientset, appClient *versioned.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "kubesphere",
+		"resource":  "application",
+	})
 	return applicationInfo{
 		appClient:  appClient,
 		kubeClient: kubeClient,
 		ctx:        ctx,
+		logger:     logger,
 	}
 }

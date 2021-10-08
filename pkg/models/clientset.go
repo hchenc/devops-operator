@@ -40,7 +40,7 @@ func newForDevOpsConfigOrDie(devopsConfig *Config) *GitlabClient {
 	}
 
 	for _, pipeline := range devopsConfig.Devops.Pipelines {
-		if  pipeline.CiConfigPath == "" ||
+		if pipeline.CiConfigPath == "" ||
 			pipeline.Template == "" ||
 			pipeline.Pipeline == "" {
 			panic(errors.New("pipeline not found"))

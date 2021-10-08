@@ -3,6 +3,8 @@ package resource
 import (
 	"context"
 	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +14,7 @@ import (
 
 type volumeInfo struct {
 	kubeClient *kubernetes.Clientset
+	logger     *logrus.Logger
 	ctx        context.Context
 }
 
@@ -56,7 +59,7 @@ func (v volumeInfo) Update(objOld interface{}, objNew interface{}) error {
 	panic("implement me")
 }
 
-func (v volumeInfo) Delete(obj interface{}) error {
+func (v volumeInfo) Delete(name string) error {
 	panic("implement me")
 }
 
@@ -73,8 +76,13 @@ func (v volumeInfo) List(key string) (interface{}, error) {
 }
 
 func NewVolumeGenerator(ctx context.Context, clientset *kubernetes.Clientset) syncer.Generator {
+	logger := utils.GetLogger(logrus.Fields{
+		"component": "kubernetes",
+		"resource":  "volume",
+	})
 	return volumeInfo{
 		kubeClient: clientset,
+		logger:     logger,
 		ctx:        ctx,
 	}
 }
