@@ -45,6 +45,10 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	p.logger.WithFields(appLogInfo).Info("start to create gitlab project")
 	var pipeline models.Pipelines
 	appType := application.Labels[syncer.KubesphereAppType]
+	if len(appType) == 0 {
+		appType = syncer.DefaultKubesphereAppType
+	}
+	appType = strings.ToLower(appType)
 	creator := application.Annotations[syncer.KubesphereCreator]
 	if creator == "admin" {
 		p.logger.WithFields(appLogInfo).Warn("admin user create action not work")
@@ -158,7 +162,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 				AccessLevel: git.AccessLevel(git.MaintainerPermissions),
 			})
 			defer resp.Body.Close()
-			if err != nil {
+			if err = models.NewConflict(err); err != nil && !errors.IsConflict(err) {
 				p.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
 					"message": "failed to add maintainer role to project",
 				}).Error(err)

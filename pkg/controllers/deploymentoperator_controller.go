@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	RegisterReconciler("DeploymentToApp", SetUpDeploymentReconcile)
+	RegisterReconciler("DeploymentToEnv", SetUpDeploymentReconcile)
 }
 
 type DeploymentOperatorReconciler struct {
@@ -36,7 +36,8 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			d.Log.Info("it's a delete event")
 		} else {
 			log.Logger.WithFields(logrus.Fields{
-				"deployment": req.NamespacedName,
+				"deployment": req.Name,
+				"namespace": req.Namespace,
 				"message":    "failed to reconcile deployment",
 			}).Error(err)
 		}
@@ -70,11 +71,9 @@ type deploymentPredicate struct {
 
 func (d deploymentPredicate) Create(e event.CreateEvent) bool {
 	name := e.Meta.GetNamespace()
-	labels := e.Meta.GetLabels()
-	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
-		return true
-	} else if _, ok := labels["app"]; ok {
-		//Make sure only the deployment defined by app can through the filter
+	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
+		return false
+	} else if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
 		return true
 	} else {
 		return false
@@ -102,7 +101,7 @@ func (d *DeploymentOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error 
 func SetUpDeploymentReconcile(mgr manager.Manager) {
 	if err := (&DeploymentOperatorReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("DeploymentToApp"),
+		Log:    ctrl.Log.WithName("DeploymentToEnv"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create deployment controller for ", err)

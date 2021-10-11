@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	baseErr "errors"
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
@@ -22,6 +23,11 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 	workspaceRolebinding := obj.(*v1alpha2.WorkspaceRoleBinding)
 	workspaceName := workspaceRolebinding.Labels[syncer.KubesphereWorkspace]
 	userName := workspaceRolebinding.Subjects[0].Name
+
+	rbLogInfo := logrus.Fields{
+		"rolebinding": workspaceRolebinding.Name,
+	}
+	var errs []error
 
 	candidates := map[string]string{
 		workspaceName + "-fat":     "fat",
@@ -54,13 +60,24 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 			}
 		}).(*v1.RoleBinding)
 		_, err := r.kubeclient.RbacV1().RoleBindings(namespace).Create(r.ctx, rolebinding, metav1.CreateOptions{})
-		if errors.IsAlreadyExists(err) {
-			continue
+		if err == nil || errors.IsAlreadyExists(err) {
+			r.logger.WithFields(rbLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+			}).Info("succeed to create namespaced kubesphere rolebinding")
 		} else {
-			return nil, err
+			r.logger.WithFields(rbLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+				"message": "failed to create namespaced kubesphere rolebinding",
+			}).Error(err)
+			errs = append(errs, err)
 		}
 	}
-	return nil, nil
+	if len(errs) != 0 {
+		return nil, baseErr.New("failed to sync kubesphere rolebinding")
+	} else {
+		r.logger.WithFields(rbLogInfo).Info("finish to sync kubesphere rolebinding")
+		return nil, nil
+	}
 }
 
 func (r rolebindingInfo) Update(objOld interface{}, objNew interface{}) error {

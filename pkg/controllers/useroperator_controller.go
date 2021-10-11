@@ -33,17 +33,18 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 	err := u.Get(ctx, req.NamespacedName, user)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			u.Log.Info("it's a delete event")
 			err := userGeneratorService.Delete(req.Name)
 			if err != nil {
 				log.Logger.WithFields(logrus.Fields{
 					"user": req.Name,
+					"namespace": req.Namespace,
 					"message":           "failed to delete user",
 				}).Error(err)
 			}
 		} else {
 			log.Logger.WithFields(logrus.Fields{
 				"user":    req.Name,
+				"namespace": req.Namespace,
 				"message": "failed to reconcile user",
 			}).Error(err)
 		}

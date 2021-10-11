@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	baseErr "errors"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -21,7 +22,10 @@ type deploymentInfo struct {
 
 func (d deploymentInfo) Create(obj interface{}) (interface{}, error) {
 	deployment := obj.(*v1.Deployment)
-
+	dpLogInfo := logrus.Fields{
+		"deployment": deployment.Name,
+	}
+	var errs []error
 	namespacePrefix := strings.Split(deployment.Namespace, "-")[0]
 	candidates := map[string]string{
 		namespacePrefix + "-fat":     "fat",
@@ -65,12 +69,23 @@ func (d deploymentInfo) Create(obj interface{}) (interface{}, error) {
 		}).(*v1.Deployment)
 		_, err := d.kubeClient.AppsV1().Deployments(namespace).Create(d.ctx, deployment, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
-			continue
+			d.logger.WithFields(dpLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+			}).Info("succeed to create namespaced kubernetes deployment")
 		} else {
-			return nil, err
+			d.logger.WithFields(dpLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+				"message": "failed to create namespaced kubernetes deployment",
+			}).Error(err)
+			errs = append(errs, err)
 		}
 	}
-	return nil, nil
+	if len(errs) != 0 {
+		return nil, baseErr.New("failed to sync kubernetes deployment")
+	} else {
+		d.logger.WithFields(dpLogInfo).Info("finish to sync kubernetes deployment")
+		return nil, nil
+	}
 }
 
 func (d deploymentInfo) Update(objOld interface{}, objNew interface{}) error {

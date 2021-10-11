@@ -58,6 +58,7 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 			}).Info("succeed to create namespaced kubesphere application")
 		} else {
 			a.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
 				"message": "failed to create namespaced kubesphere application",
 			}).Error(err)
 			errs = append(errs, err)
@@ -66,7 +67,7 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 	if len(errs) != 0 {
 		return nil, baseErr.New("failed to sync kubesphere application")
 	} else {
-		a.logger.WithFields(appLogInfo).Info("finish to create kubesphere application")
+		a.logger.WithFields(appLogInfo).Info("finish to sync kubesphere application")
 		return nil, nil
 	}
 }

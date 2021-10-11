@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	baseErr "errors"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -20,7 +21,10 @@ type serviceInfo struct {
 
 func (s serviceInfo) Create(obj interface{}) (interface{}, error) {
 	service := obj.(*v1.Service)
-
+	svcLogInfo := logrus.Fields{
+		"service": service.Name,
+	}
+	var errs []error
 	namespacePrefix := strings.Split(service.Namespace, "-")[0]
 	candidates := map[string]string{
 		namespacePrefix + "-fat":     "fat",
@@ -63,12 +67,23 @@ func (s serviceInfo) Create(obj interface{}) (interface{}, error) {
 		}).(*v1.Service)
 		_, err := s.kubeClient.CoreV1().Services(namespace).Create(s.ctx, service, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
-			continue
+			s.logger.WithFields(svcLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+			}).Info("succeed to create namespaced kubernetes service")
 		} else {
-			return nil, err
+			s.logger.WithFields(svcLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+				"message": "failed to create namespaced kubernetes service",
+			}).Error(err)
+			errs = append(errs, err)
 		}
 	}
-	return nil, nil
+	if len(errs) != 0 {
+		return nil, baseErr.New("failed to sync kubernetes service")
+	} else {
+		s.logger.WithFields(svcLogInfo).Info("finish to sync kubesphere service")
+		return nil, nil
+	}
 }
 
 func (s serviceInfo) Update(objOld interface{}, objNew interface{}) error {
