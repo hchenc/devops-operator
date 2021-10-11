@@ -135,8 +135,12 @@ func (r workspacePredicate) Update(e event.UpdateEvent) bool {
 	return false
 }
 func (r workspacePredicate) Delete(e event.DeleteEvent) bool {
-	return false
-
+	name := e.Meta.GetName()
+	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
+		return false
+	} else {
+		return true
+	}
 }
 func (r workspacePredicate) Generic(e event.GenericEvent) bool {
 	return false

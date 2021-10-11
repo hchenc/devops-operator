@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	baseErr "errors"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -20,7 +21,10 @@ type volumeInfo struct {
 
 func (v volumeInfo) Create(obj interface{}) (interface{}, error) {
 	volume := obj.(*v1.PersistentVolumeClaim)
-
+	volumeLogInfo := logrus.Fields{
+		"volume": volume.Name,
+	}
+	var errs []error
 	namespacePrefix := strings.Split(volume.Namespace, "-")[0]
 	candidates := map[string]string{
 		namespacePrefix + "-fat":     "fat",
@@ -47,12 +51,23 @@ func (v volumeInfo) Create(obj interface{}) (interface{}, error) {
 		}).(*v1.PersistentVolumeClaim)
 		_, err := v.kubeClient.CoreV1().PersistentVolumeClaims(namespace).Create(v.ctx, volume, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
-			continue
+			v.logger.WithFields(volumeLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+			}).Info("succeed to create namespaced kubernetes volume")
 		} else {
-			return nil, err
+			v.logger.WithFields(volumeLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace,
+				"message": "failed to create namespaced kubernetes volume",
+			}).Error(err)
+			errs = append(errs, err)
 		}
 	}
-	return nil, nil
+	if len(errs) != 0 {
+		return nil, baseErr.New("failed to sync kubernetes volume")
+	} else {
+		v.logger.WithFields(volumeLogInfo).Info("finish to sync kubesphere volume")
+		return nil, nil
+	}
 }
 
 func (v volumeInfo) Update(objOld interface{}, objNew interface{}) error {

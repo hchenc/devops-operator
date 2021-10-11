@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
 	"github.com/sirupsen/logrus"
@@ -38,12 +39,14 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			if err != nil {
 				log.Logger.WithFields(logrus.Fields{
 					"rolebinding": req.Name,
+					"namespace": req.Namespace,
 					"message":     "failed to delete rolebinding",
 				}).Error(err)
 			}
 		} else {
 			log.Logger.WithFields(logrus.Fields{
 				"rolebinding": req.Name,
+				"namespace": req.Namespace,
 				"message":     "failed to reconcile rolebinding",
 			}).Error(err)
 		}
@@ -55,18 +58,18 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
 					"resource": "Pager",
-					"name":     "member-" + rolebinding.Name,
+					"name":     "member-" + rolebinding.Subjects[0].Name,
 					"result":   "failed",
-					"error":    err.Error(),
-				}).Errorf("pager created failed, retry after %d second", RetryPeriod)
+					"message":  fmt.Sprintf("pager created failed, retry after %d second", RetryPeriod),
+				}).Error(err)
 			} else {
 				log.Logger.WithFields(logrus.Fields{
 					"event":    "create",
 					"resource": "Member",
 					"name":     rolebinding.Name,
 					"result":   "failed",
-					"error":    err.Error(),
-				}).Errorf("member created failed, retry after %d second", RetryPeriod)
+					"message":  fmt.Sprintf("member created failed, retry after %d second", RetryPeriod),
+				}).Error(err)
 			}
 			return reconcile.Result{
 				RequeueAfter: RetryPeriod * time.Second,
@@ -81,8 +84,8 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 				"resource": "Rolebinding",
 				"name":     rolebinding.Name,
 				"result":   "failed",
-				"error":    err.Error(),
-			}).Errorf("rolebinding sync failed, retry after %d second", RetryPeriod)
+				"message":  fmt.Sprintf("rolebinding sync to fat|uat|smoking env failed, retry after %d second", RetryPeriod),
+			}).Error(err)
 			return reconcile.Result{
 				RequeueAfter: RetryPeriod * time.Second,
 			}, err
@@ -114,7 +117,12 @@ func (r rolebindingPredicate) Update(e event.UpdateEvent) bool {
 	return false
 }
 func (r rolebindingPredicate) Delete(e event.DeleteEvent) bool {
-	return false
+	name := e.Meta.GetName()
+	if strings.Contains(name, "system") || strings.Contains(name, "admin") {
+		return false
+	} else {
+		return true
+	}
 }
 func (r rolebindingPredicate) Generic(e event.GenericEvent) bool {
 	return false

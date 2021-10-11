@@ -38,12 +38,14 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 			if err != nil {
 				log.Logger.WithFields(logrus.Fields{
 					"application": req.Name,
+					"namespace": req.Namespace,
 					"message":     "failed to delete application",
 				}).Error(err)
 			}
 		} else {
 			log.Logger.WithFields(logrus.Fields{
 				"application": req.Name,
+				"namespace": req.Namespace,
 				"message":     "failed to reconcile application",
 			}).Error(err)
 		}
@@ -102,11 +104,13 @@ type projectPredicate struct {
 }
 
 func (r projectPredicate) Create(e event.CreateEvent) bool {
-	name := e.Meta.GetName()
+	name := e.Meta.GetNamespace()
 	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
 		return false
-	} else {
+	} else if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
 		return true
+	} else {
+		return false
 	}
 }
 func (r projectPredicate) Update(e event.UpdateEvent) bool {
@@ -114,8 +118,12 @@ func (r projectPredicate) Update(e event.UpdateEvent) bool {
 	return false
 }
 func (r projectPredicate) Delete(e event.DeleteEvent) bool {
-	return false
-
+	name := e.Meta.GetName()
+	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
+		return false
+	} else {
+		return true
+	}
 }
 func (r projectPredicate) Generic(e event.GenericEvent) bool {
 	return false

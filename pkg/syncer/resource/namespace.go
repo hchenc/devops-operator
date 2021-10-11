@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	baseErr "errors"
 	tenantv1alpha1 "github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha1"
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
 	"github.com/hchenc/devops-operator/pkg/syncer"
@@ -36,6 +37,10 @@ type namespaceInfo struct {
 func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 	workspace := obj.(*v1alpha2.WorkspaceTemplate)
 	workspaceName := workspace.Name
+	nsLogInfo := logrus.Fields{
+		"workspace": workspaceName,
+	}
+	var errs []error
 	candidates := map[string]string{
 		"fat":     workspaceName + "-fat",
 		"uat":     workspaceName + "-uat",
@@ -71,12 +76,23 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 		}).(*v1.Namespace)
 		_, err := n.client.CoreV1().Namespaces().Create(n.ctx, namespace, metav1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
-			continue
+			n.logger.WithFields(nsLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace.Name,
+			}).Info("finish to create namespaced kubernetes namespace")
 		} else {
-			return nil, err
+			n.logger.WithFields(nsLogInfo).WithFields(logrus.Fields{
+				"namespace": namespace.Name,
+				"message": "failed to create namespaced kubernetes namespace",
+			}).Error(err)
+			errs = append(errs, err)
 		}
 	}
-	return nil, nil
+	if len(errs) != 0 {
+		return nil, baseErr.New("failed to sync kubernetes namespace")
+	} else {
+		n.logger.WithFields(nsLogInfo).Info("finish to sync kubernetes namespace")
+		return nil, nil
+	}
 }
 
 func (n namespaceInfo) Update(objOld interface{}, objNew interface{}) error {

@@ -65,3 +65,96 @@ status:
     plural: ""
   conditions: []
   storedVersions: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: devops-operator-role
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: devops-operator-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: devops-operator-role
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: devops-system
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: devops-config
+  namespace: devops-system
+data:
+  .devops-operator.yaml: |
+    Devops:
+      Gitlab:
+        Host: 192.168.43.242
+        Password: chenhao2
+        Port: "80"
+        Token: ""
+        User: root
+        Version: ee
+      Harbor:
+        Host: http://192.168.43.242:5088/api/v2.0
+        Password: Harbor12345
+        User: admin
+      Pipelines:
+        - CiConfigPath: http://192.168.43.242/devops/devops/-/raw/main/java.yml
+          Pipeline: java
+          Template: spring
+        - CiConfigPath: http://192.168.43.242/devops/devops/-/raw/master/python.yml
+          Pipeline: python
+          Template: python
+        - CiConfigPath: http://192.168.43.242/devops/devops/-/raw/master/nodejs.yml
+          Pipeline: nodejs
+          Template: nodejs express
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: devops-operator-controller
+  namespace: devops-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+    spec:
+      volumes:
+        - name: configmaps
+          configMap:
+            name: devops-config
+            defaultMode: 420
+      containers:
+        - image: 364554757/devops:latest
+          args:
+            - run
+          name: controller
+          volumeMounts:
+            - name: configmaps
+              mountPath: /root
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 3000Mi
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: default
+

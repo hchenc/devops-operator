@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	RegisterReconciler("Service", SetUpServiceReconcile)
+	RegisterReconciler("ServiceToEnv", SetUpServiceReconcile)
 }
 
 type ServiceOperatorReconciler struct {
@@ -36,7 +36,8 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 			s.Log.Info("it's a delete event")
 		} else {
 			log.Logger.WithFields(logrus.Fields{
-				"service": req.NamespacedName,
+				"service": req.Name,
+				"namespace": req.Namespace,
 				"message": "failed to reconcile service",
 			}).Error(err)
 		}
@@ -50,7 +51,7 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 				"name":     service.Name,
 				"result":   "failed",
 				"error":    err.Error(),
-			}).Errorf("service created failed, retry after %d second", RetryPeriod)
+			}).Errorf("service sync to fat|uat|smoking env failed, retry after %d second", RetryPeriod)
 			return reconcile.Result{
 				RequeueAfter: RetryPeriod * time.Second,
 			}, err
@@ -70,10 +71,9 @@ type servicePredicate struct {
 
 func (s servicePredicate) Create(e event.CreateEvent) bool {
 	name := e.Meta.GetNamespace()
-	labels := e.Meta.GetLabels()
-	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
-		return true
-	} else if _, ok := labels["app"]; ok {
+	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
+		return false
+	} else if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
 		return true
 	} else {
 		return false
@@ -101,7 +101,7 @@ func (s *ServiceOperatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func SetUpServiceReconcile(mgr manager.Manager) {
 	if err := (&ServiceOperatorReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("Service"),
+		Log:    ctrl.Log.WithName("ServiceToEnv"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create service controller for ", err)

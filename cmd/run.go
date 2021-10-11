@@ -22,7 +22,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -48,8 +48,8 @@ var runCmd = &cobra.Command{
 		// use the current context in kubeconfig
 		initConfig()
 
-		//config, err := rest.InClusterConfig()
-		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+		config, err := rest.InClusterConfig()
+		//config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			panic(err.Error())
 		}
