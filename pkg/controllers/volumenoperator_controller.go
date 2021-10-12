@@ -3,7 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/go-logr/logr"
-	"github.com/hchenc/devops-operator/pkg/syncer"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -79,7 +79,7 @@ type volumePredicate struct {
 
 func (v volumePredicate) Create(e event.CreateEvent) bool {
 	namespace := e.Meta.GetNamespace()
-	if _, exist := e.Meta.GetLabels()[syncer.KubesphereAppName]; !exist {
+	if _, exist := e.Meta.GetLabels()[constant.KubesphereAppName]; !exist {
 		return false
 	} else if strings.Contains(namespace, "smoking") || strings.Contains(namespace, "fat") || strings.Contains(namespace, "uat") {
 		return true

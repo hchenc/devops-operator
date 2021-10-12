@@ -38,14 +38,14 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 			if err != nil {
 				log.Logger.WithFields(logrus.Fields{
 					"application": req.Name,
-					"namespace": req.Namespace,
+					"namespace":   req.Namespace,
 					"message":     "failed to delete application",
 				}).Error(err)
 			}
 		} else {
 			log.Logger.WithFields(logrus.Fields{
 				"application": req.Name,
-				"namespace": req.Namespace,
+				"namespace":   req.Namespace,
 				"message":     "failed to reconcile application",
 			}).Error(err)
 		}

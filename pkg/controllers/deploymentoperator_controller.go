@@ -37,7 +37,7 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 		} else {
 			log.Logger.WithFields(logrus.Fields{
 				"deployment": req.Name,
-				"namespace": req.Namespace,
+				"namespace":  req.Namespace,
 				"message":    "failed to reconcile deployment",
 			}).Error(err)
 		}

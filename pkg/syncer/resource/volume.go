@@ -53,11 +53,11 @@ func (v volumeInfo) Create(obj interface{}) (interface{}, error) {
 		if err == nil || errors.IsAlreadyExists(err) {
 			v.logger.WithFields(volumeLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-			}).Info("succeed to create namespaced kubernetes volume")
+			}).Info("finish to create namespaced kubernetes volume")
 		} else {
 			v.logger.WithFields(volumeLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-				"message": "failed to create namespaced kubernetes volume",
+				"message":   "failed to create namespaced kubernetes volume",
 			}).Error(err)
 			errs = append(errs, err)
 		}

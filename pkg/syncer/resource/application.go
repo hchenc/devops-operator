@@ -55,11 +55,11 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 		if err == nil || errors.IsAlreadyExists(err) {
 			a.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-			}).Info("succeed to create namespaced kubesphere application")
+			}).Info("finish to create namespaced kubesphere application")
 		} else {
 			a.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-				"message": "failed to create namespaced kubesphere application",
+				"message":   "failed to create namespaced kubesphere application",
 			}).Error(err)
 			errs = append(errs, err)
 		}

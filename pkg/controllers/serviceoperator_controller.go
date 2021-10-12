@@ -36,9 +36,9 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 			s.Log.Info("it's a delete event")
 		} else {
 			log.Logger.WithFields(logrus.Fields{
-				"service": req.Name,
+				"service":   req.Name,
 				"namespace": req.Namespace,
-				"message": "failed to reconcile service",
+				"message":   "failed to reconcile service",
 			}).Error(err)
 		}
 	} else {

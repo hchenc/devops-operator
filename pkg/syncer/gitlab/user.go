@@ -4,6 +4,7 @@ import (
 	"context"
 	baseErr "errors"
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
@@ -64,7 +65,7 @@ func (u userInfo) Create(obj interface{}) (interface{}, error) {
 		}
 		_, err := u.pagerClient.
 			DevopsV1alpha1().
-			Pagers(syncer.DevopsNamespace).
+			Pagers(constant.DevopsNamespace).
 			Create(u.ctx, &v1alpha1.Pager{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "user-" + user.Name,
@@ -96,7 +97,7 @@ func (u userInfo) Delete(userName string) error {
 	}
 	u.logger.WithFields(userLogInfo).Info("start to delete gitlab user pager")
 
-	err := u.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(u.ctx, pagerName, v1.DeleteOptions{})
+	err := u.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Delete(u.ctx, pagerName, v1.DeleteOptions{})
 	if err == nil || errors.IsNotFound(err) {
 		u.logger.WithFields(userLogInfo).WithFields(logrus.Fields{
 			"pager": pagerName,

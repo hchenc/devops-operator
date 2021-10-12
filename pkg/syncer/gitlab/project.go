@@ -3,6 +3,7 @@ package gitlab
 import (
 	"context"
 	"github.com/hchenc/application/pkg/apis/app/v1beta1"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
@@ -43,26 +44,16 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 		"namespace":   application.Namespace,
 	}
 	p.logger.WithFields(appLogInfo).Info("start to create gitlab project")
-	var pipeline models.Pipelines
-	appType := application.Labels[syncer.KubesphereAppType]
-	if len(appType) == 0 {
-		appType = syncer.DefaultKubesphereAppType
-	}
-	appType = strings.ToLower(appType)
-	creator := application.Annotations[syncer.KubesphereCreator]
+	appType := strings.ToLower(application.Labels[constant.KubesphereAppType])
+	pipeline := p.gitlabClient.GetPipelines(appType)
+	creator := application.Annotations[constant.KubesphereCreator]
 	if creator == "admin" {
 		p.logger.WithFields(appLogInfo).Warn("admin user create action not work")
 		return nil, nil
 	}
-	for _, pip := range p.gitlabClient.Pipelines {
-		if appType == pip.Pipeline {
-			pipeline = pip
-			break
-		}
-	}
 
 	workspaceName := strings.Split(application.Namespace, "-")[0]
-	pagerRecord, err := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(p.ctx, "workspace-"+workspaceName, v1.GetOptions{})
+	pagerRecord, err := p.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Get(p.ctx, "workspace-"+workspaceName, v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			p.logger.WithFields(appLogInfo).Errorf("failed to get pager record workspace-%s", workspaceName)
@@ -75,7 +66,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	pagerID, _ := strconv.Atoi(pagerRecord.Spec.MessageID)
 	name := git.String(application.Name)
 	groupID := git.Int(pagerID)
-	description := git.String(application.GetAnnotations()[syncer.KubesphereDescription])
+	description := git.String(application.GetAnnotations()[constant.KubesphereDescription])
 
 	project, resp, err := p.gitlabClient.Client.Projects.CreateProject(&git.CreateProjectOptions{
 		Name:                             name,
@@ -133,7 +124,7 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 		}
 		_, err := p.pagerClient.
 			DevopsV1alpha1().
-			Pagers(syncer.DevopsNamespace).
+			Pagers(constant.DevopsNamespace).
 			Create(p.ctx, &v1alpha1.Pager{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "application-" + project.Name,
@@ -145,11 +136,11 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 				},
 			}, v1.CreateOptions{})
 		if err == nil || errors.IsAlreadyExists(err) {
-			p.logger.WithFields(appLogInfo).Info("succeed to create gitlab project")
+			p.logger.WithFields(appLogInfo).Info("finish to create gitlab project")
 			if creator == "" {
 				return project, nil
 			}
-			userPager, err := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(p.ctx, "user-"+creator, v1.GetOptions{})
+			userPager, err := p.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Get(p.ctx, "user-"+creator, v1.GetOptions{})
 			if err != nil {
 				p.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
 					"message": "failed to get application creator",
@@ -181,13 +172,13 @@ func (p projectInfo) Update(objOld interface{}, objNew interface{}) error {
 }
 
 func (p projectInfo) Delete(appName string) error {
-	pagerName := "application-"+appName
+	pagerName := "application-" + appName
 	appLogInfo := logrus.Fields{
 		"application": appName,
 	}
 	p.logger.WithFields(appLogInfo).Info("start to delete kubesphere application pager")
 
-	err := p.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(p.ctx, pagerName, v1.DeleteOptions{})
+	err := p.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Delete(p.ctx, pagerName, v1.DeleteOptions{})
 	if err == nil || errors.IsNotFound(err) {
 		p.logger.WithFields(appLogInfo).WithFields(logrus.Fields{
 			"pager": pagerName,

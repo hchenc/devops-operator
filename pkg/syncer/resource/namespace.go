@@ -5,6 +5,7 @@ import (
 	baseErr "errors"
 	tenantv1alpha1 "github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha1"
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -46,7 +47,7 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 		"uat":     workspaceName + "-uat",
 		"smoking": workspaceName + "-smoking",
 	}
-	creator := workspace.GetAnnotations()[syncer.KubesphereCreator]
+	creator := workspace.GetAnnotations()[constant.KubesphereCreator]
 
 	for index, namespaceName := range candidates {
 		namespace := assembleResource(workspace, namespaceName, func(obj interface{}, namespace string) interface{} {
@@ -82,7 +83,7 @@ func (n namespaceInfo) Create(obj interface{}) (interface{}, error) {
 		} else {
 			n.logger.WithFields(nsLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace.Name,
-				"message": "failed to create namespaced kubernetes namespace",
+				"message":   "failed to create namespaced kubernetes namespace",
 			}).Error(err)
 			errs = append(errs, err)
 		}

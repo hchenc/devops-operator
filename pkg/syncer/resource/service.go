@@ -69,11 +69,11 @@ func (s serviceInfo) Create(obj interface{}) (interface{}, error) {
 		if err == nil || errors.IsAlreadyExists(err) {
 			s.logger.WithFields(svcLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-			}).Info("succeed to create namespaced kubernetes service")
+			}).Info("finish to create namespaced kubernetes service")
 		} else {
 			s.logger.WithFields(svcLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-				"message": "failed to create namespaced kubernetes service",
+				"message":   "failed to create namespaced kubernetes service",
 			}).Error(err)
 			errs = append(errs, err)
 		}

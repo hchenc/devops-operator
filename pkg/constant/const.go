@@ -1,9 +1,9 @@
-package syncer
+package constant
 
 const (
 	DevopsNamespace = "devops-system"
 
-	DefaultKubesphereAppType = "python"
+	DefaultPipeline = "default"
 
 	KubesphereAppType     = "app.kubernetes.io/type"
 	KubesphereAppName     = "app.kubernetes.io/name"

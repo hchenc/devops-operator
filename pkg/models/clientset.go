@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/hchenc/application/pkg/client/clientset/versioned"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	harbor2 "github.com/hchenc/go-harbor"
 	versioned2 "github.com/hchenc/pager/pkg/client/clientset/versioned"
 	"github.com/xanzy/go-gitlab"
@@ -16,6 +17,20 @@ type GitlabClient struct {
 	Username  string
 	Password  string
 	Pipelines []Pipelines
+}
+
+func (g GitlabClient) GetPipelines(pipeline string) Pipelines {
+	var pipelines Pipelines
+	if len(pipeline) == 0 {
+		pipeline = constant.DefaultPipeline
+	}
+	for _, pipe := range g.Pipelines {
+		if pipeline == pipe.Pipeline {
+			pipelines = pipe
+			break
+		}
+	}
+	return pipelines
 }
 
 type ClientSet struct {

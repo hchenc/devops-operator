@@ -3,6 +3,7 @@ package gitlab
 import (
 	"context"
 	"github.com/hchenc/devops-operator/pkg/apis/tenant/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
@@ -31,7 +32,7 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 	g.logger.WithFields(workspaceLogInfo).Info("start to create gitlab group")
 
 	name := git.String(workspace.Name)
-	description := git.String(workspace.GetAnnotations()[syncer.KubesphereDescription])
+	description := git.String(workspace.GetAnnotations()[constant.KubesphereDescription])
 	group, resp, err := g.gitlabClient.Client.Groups.CreateGroup(&git.CreateGroupOptions{
 		Name:                           name,
 		Path:                           name,
@@ -71,7 +72,7 @@ func (g groupInfo) Create(obj interface{}) (interface{}, error) {
 		}
 		_, err := g.pagerClient.
 			DevopsV1alpha1().
-			Pagers(syncer.DevopsNamespace).
+			Pagers(constant.DevopsNamespace).
 			Create(g.ctx, &v1alpha1.Pager{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "workspace-" + workspace.Name,
@@ -114,7 +115,7 @@ func (g groupInfo) Delete(workspaceName string) error {
 	}
 	g.logger.WithFields(workspaceLogInfo).Info("start to delete gitlab pager")
 
-	err := g.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(g.ctx, pagerName, v1.DeleteOptions{})
+	err := g.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Delete(g.ctx, pagerName, v1.DeleteOptions{})
 	if err == nil || errors.IsNotFound(err) {
 		g.logger.WithFields(workspaceLogInfo).WithFields(logrus.Fields{
 			"pager": pagerName,

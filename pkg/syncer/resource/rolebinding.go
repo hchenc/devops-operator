@@ -4,6 +4,7 @@ import (
 	"context"
 	baseErr "errors"
 	"github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -21,7 +22,7 @@ type rolebindingInfo struct {
 
 func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 	workspaceRolebinding := obj.(*v1alpha2.WorkspaceRoleBinding)
-	workspaceName := workspaceRolebinding.Labels[syncer.KubesphereWorkspace]
+	workspaceName := workspaceRolebinding.Labels[constant.KubesphereWorkspace]
 	userName := workspaceRolebinding.Subjects[0].Name
 
 	rbLogInfo := logrus.Fields{
@@ -63,11 +64,11 @@ func (r rolebindingInfo) Create(obj interface{}) (interface{}, error) {
 		if err == nil || errors.IsAlreadyExists(err) {
 			r.logger.WithFields(rbLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-			}).Info("succeed to create namespaced kubesphere rolebinding")
+			}).Info("finish to create namespaced kubesphere rolebinding")
 		} else {
 			r.logger.WithFields(rbLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-				"message": "failed to create namespaced kubesphere rolebinding",
+				"message":   "failed to create namespaced kubesphere rolebinding",
 			}).Error(err)
 			errs = append(errs, err)
 		}

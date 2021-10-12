@@ -71,11 +71,11 @@ func (d deploymentInfo) Create(obj interface{}) (interface{}, error) {
 		if err == nil || errors.IsAlreadyExists(err) {
 			d.logger.WithFields(dpLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-			}).Info("succeed to create namespaced kubernetes deployment")
+			}).Info("finish to create namespaced kubernetes deployment")
 		} else {
 			d.logger.WithFields(dpLogInfo).WithFields(logrus.Fields{
 				"namespace": namespace,
-				"message": "failed to create namespaced kubernetes deployment",
+				"message":   "failed to create namespaced kubernetes deployment",
 			}).Error(err)
 			errs = append(errs, err)
 		}

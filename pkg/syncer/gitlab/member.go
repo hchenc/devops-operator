@@ -3,6 +3,7 @@ package gitlab
 import (
 	"context"
 	iamv1alpha2 "github.com/hchenc/devops-operator/pkg/apis/iam/v1alpha2"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/hchenc/devops-operator/pkg/syncer"
 	"github.com/hchenc/devops-operator/pkg/utils"
@@ -25,12 +26,12 @@ type memberInfo struct {
 
 func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 	rolebinding := obj.(*iamv1alpha2.WorkspaceRoleBinding)
-	groupName := rolebinding.Labels[syncer.KubesphereWorkspace]
+	groupName := rolebinding.Labels[constant.KubesphereWorkspace]
 	userName := rolebinding.Subjects[0].Name
 
-	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(m.ctx, "workspace-"+groupName, v1.GetOptions{})
+	groupRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Get(m.ctx, "workspace-"+groupName, v1.GetOptions{})
 
-	userRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Get(m.ctx, "user-"+userName, v1.GetOptions{})
+	userRecord, _ := m.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Get(m.ctx, "user-"+userName, v1.GetOptions{})
 
 	uid, _ := strconv.Atoi(userRecord.Spec.MessageID)
 
@@ -52,7 +53,7 @@ func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 		}
 		_, err := m.pagerClient.
 			DevopsV1alpha1().
-			Pagers(syncer.DevopsNamespace).
+			Pagers(constant.DevopsNamespace).
 			Create(m.ctx, &v1alpha1.Pager{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "member-" + member.Name,
@@ -83,7 +84,7 @@ func (m memberInfo) Delete(rolebindingName string) error {
 	}
 	m.logger.WithFields(memberLogInfo).Info("start to delete gitlab member pager")
 
-	err := m.pagerClient.DevopsV1alpha1().Pagers(syncer.DevopsNamespace).Delete(m.ctx, pagerName, v1.DeleteOptions{})
+	err := m.pagerClient.DevopsV1alpha1().Pagers(constant.DevopsNamespace).Delete(m.ctx, pagerName, v1.DeleteOptions{})
 	if err == nil || errors.IsNotFound(err) {
 		m.logger.WithFields(memberLogInfo).WithFields(logrus.Fields{
 			"pager": pagerName,

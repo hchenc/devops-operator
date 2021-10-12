@@ -39,14 +39,14 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			if err != nil {
 				log.Logger.WithFields(logrus.Fields{
 					"rolebinding": req.Name,
-					"namespace": req.Namespace,
+					"namespace":   req.Namespace,
 					"message":     "failed to delete rolebinding",
 				}).Error(err)
 			}
 		} else {
 			log.Logger.WithFields(logrus.Fields{
 				"rolebinding": req.Name,
-				"namespace": req.Namespace,
+				"namespace":   req.Namespace,
 				"message":     "failed to reconcile rolebinding",
 			}).Error(err)
 		}
