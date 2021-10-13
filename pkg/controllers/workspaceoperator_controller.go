@@ -17,8 +17,12 @@ import (
 	"time"
 )
 
+var (
+	action string = "WorkspaceTemplateToGroup"
+)
+
 func init() {
-	RegisterReconciler("WorkspaceTemplateToGroup", SetUpGroupReconcile)
+	RegisterReconciler(action, SetUpGroupReconcile)
 }
 
 type WorkspaceOperatorReconciler struct {
@@ -48,6 +52,9 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 			}).Error(err)
 		}
 	} else {
+		log.Logger.WithFields(logrus.Fields{
+			"action": action,
+		}).Info("start to action")
 		// create gitlab group
 		gitlabGroup, err := groupGeneratorService.Add(workspaceTemplate)
 		if err != nil {
@@ -109,6 +116,9 @@ func (g *WorkspaceOperatorReconciler) Reconcile(req reconcile.Request) (reconcil
 			"result":   "success",
 		}).Infof("finish to sync workspace %s", workspaceTemplate.Name)
 	}
+	log.Logger.WithFields(logrus.Fields{
+		"action": action,
+	}).Info("finish to action")
 	return reconcile.Result{}, nil
 }
 
@@ -149,7 +159,7 @@ func (r workspacePredicate) Generic(e event.GenericEvent) bool {
 func SetUpGroupReconcile(mgr manager.Manager) {
 	if err := (&WorkspaceOperatorReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("WorkspaceTemplateToGroup"),
+		Log:    ctrl.Log.WithName(action),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		log.Fatalf("unable to create workspace controller for", err)

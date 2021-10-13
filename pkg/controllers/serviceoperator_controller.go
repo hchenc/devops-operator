@@ -42,6 +42,9 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 			}).Error(err)
 		}
 	} else {
+		log.Logger.WithFields(logrus.Fields{
+			"action": "ServiceToEnv",
+		}).Info("start to action")
 		//sync service to all environment(fat|uat|smoking)
 		_, err = serviceGeneratorService.Add(service)
 		if err != nil {
@@ -63,6 +66,9 @@ func (s *ServiceOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.
 			"result":   "success",
 		}).Infof("finish to sync service %s", service.Name)
 	}
+	log.Logger.WithFields(logrus.Fields{
+		"action": "ServiceToEnv",
+	}).Info("finish to action")
 	return reconcile.Result{}, nil
 }
 

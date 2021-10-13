@@ -42,6 +42,9 @@ func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 			}).Error(err)
 		}
 	} else {
+		log.Logger.WithFields(logrus.Fields{
+			"action": "PersistentVolume",
+		}).Info("start to action")
 		//sync volume to all environment(fat|uat|smoking)
 		_, err := volumeGeneratorService.Add(volume)
 		if err != nil {
@@ -64,6 +67,9 @@ func (v VolumeOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Re
 			"message":  "volume controller successful",
 		}).Infof("finish to sync volume %s", volume.Name)
 	}
+	log.Logger.WithFields(logrus.Fields{
+		"action": "PersistentVolume",
+	}).Info("finish to action")
 	return reconcile.Result{}, nil
 }
 

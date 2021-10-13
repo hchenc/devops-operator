@@ -51,6 +51,9 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			}).Error(err)
 		}
 	} else {
+		log.Logger.WithFields(logrus.Fields{
+			"action": "RolebindingToMember",
+		}).Info("start to action")
 		// add user to group member
 		member, err := memberGeneratorService.Add(rolebinding)
 		if err != nil {
@@ -98,6 +101,9 @@ func (r RolebindingOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			"result":   "success",
 		}).Infof("finish to sync rolebinding %s", rolebinding.Name)
 	}
+	log.Logger.WithFields(logrus.Fields{
+		"action": "RolebindingToMember",
+	}).Info("finish to action")
 	return reconcile.Result{}, nil
 }
 

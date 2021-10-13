@@ -56,11 +56,11 @@ func (m memberInfo) Create(obj interface{}) (interface{}, error) {
 			Pagers(constant.DevopsNamespace).
 			Create(m.ctx, &v1alpha1.Pager{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "member-" + member.Name,
+					Name: "member-" + member.Username,
 				},
 				Spec: v1alpha1.PagerSpec{
 					MessageID:   strconv.Itoa(member.ID),
-					MessageName: member.Name,
+					MessageName: member.Username,
 					MessageType: rolebinding.Kind,
 				},
 			}, v1.CreateOptions{})

@@ -42,6 +42,9 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			}).Error(err)
 		}
 	} else {
+		log.Logger.WithFields(logrus.Fields{
+			"action": "DeploymentToEnv",
+		}).Info("start to action")
 		//sync deployment to all environment(fat|uat|smoking)
 		_, err := deploymentGeneratorService.Add(deployment)
 		if err != nil {
@@ -63,6 +66,9 @@ func (d *DeploymentOperatorReconciler) Reconcile(req reconcile.Request) (reconci
 			"result":   "success",
 		}).Infof("finish to sync deployment %s", deployment.Name)
 	}
+	log.Logger.WithFields(logrus.Fields{
+		"action": "DeploymentToEnv",
+	}).Info("finish to action")
 	return reconcile.Result{}, nil
 }
 

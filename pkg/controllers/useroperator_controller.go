@@ -49,6 +49,9 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 			}).Error(err)
 		}
 	} else {
+		log.Logger.WithFields(logrus.Fields{
+			"action": "UserToUser",
+		}).Info("start to action")
 		// create gitlab project
 		gitlabUser, err := userGeneratorService.Add(user)
 		if err != nil {
@@ -80,6 +83,9 @@ func (u *UserOperatorReconciler) Reconcile(req reconcile.Request) (reconcile.Res
 			"result":   "success",
 		}).Infof("finish to sync user %s", user.Name)
 	}
+	log.Logger.WithFields(logrus.Fields{
+		"action": "UserToUser",
+	}).Info("finish to action")
 	return reconcile.Result{}, nil
 }
 

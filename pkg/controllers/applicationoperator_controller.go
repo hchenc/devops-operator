@@ -50,6 +50,9 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 			}).Error(err)
 		}
 	} else {
+		log.Logger.WithFields(logrus.Fields{
+			"action": "AppToProject",
+		}).Info("start to action")
 		// create gitlab project
 		project, err := projectGeneratorService.Add(application)
 		if err != nil {
@@ -97,6 +100,9 @@ func (r *ApplicationOperatorReconciler) Reconcile(req reconcile.Request) (reconc
 			"result":   "success",
 		}).Infof("finish to sync application %s", application.Name)
 	}
+	log.Logger.WithFields(logrus.Fields{
+		"action": "AppToProject",
+	}).Info("finish to action")
 	return reconcile.Result{}, nil
 }
 
