@@ -10,6 +10,7 @@ import (
 	"github.com/xanzy/go-gitlab"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"strings"
 )
 
 type GitlabClient struct {
@@ -19,18 +20,28 @@ type GitlabClient struct {
 	Pipelines []Pipelines
 }
 
-func (g GitlabClient) GetPipelines(pipeline string) Pipelines {
-	var pipelines Pipelines
-	if len(pipeline) == 0 {
-		pipeline = constant.DefaultPipeline
-	}
-	for _, pipe := range g.Pipelines {
-		if pipeline == pipe.Pipeline {
-			pipelines = pipe
-			break
+func (g GitlabClient) GetPipelines(appType string) (Pipelines, error) {
+	if len(appType) == 0 {
+		appType = constant.DefaultPipeline
+	} else {
+		for _, value := range []string{
+			"java",
+			"python",
+			"nodejs",
+			"go",
+		} {
+			if strings.Contains(appType, value) {
+				appType = value
+				break
+			}
 		}
 	}
-	return pipelines
+	for _, pipe := range g.Pipelines {
+		if pipe.Pipeline == appType {
+			return pipe, nil
+		}
+	}
+	return Pipelines{}, errors.New("pipeline not found")
 }
 
 type ClientSet struct {

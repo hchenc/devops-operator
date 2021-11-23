@@ -45,7 +45,10 @@ func (p projectInfo) Create(obj interface{}) (interface{}, error) {
 	}
 	p.logger.WithFields(appLogInfo).Info("start to create gitlab project")
 	appType := strings.ToLower(application.Labels[constant.KubesphereAppType])
-	pipeline := p.gitlabClient.GetPipelines(appType)
+	pipeline, err := p.gitlabClient.GetPipelines(appType)
+	if err != nil {
+		p.logger.WithFields(appLogInfo).Error(err)
+	}
 	creator := application.Annotations[constant.KubesphereCreator]
 	if creator == "admin" {
 		p.logger.WithFields(appLogInfo).Warn("admin user create action not work")

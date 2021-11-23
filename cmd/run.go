@@ -16,13 +16,13 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	controller "github.com/hchenc/devops-operator/pkg/controllers"
 	"github.com/hchenc/devops-operator/pkg/models"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -48,10 +48,16 @@ var runCmd = &cobra.Command{
 		// use the current context in kubeconfig
 		initConfig()
 
+		var config *rest.Config
+
 		config, err := rest.InClusterConfig()
-		//config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			panic(err.Error())
+		if err == rest.ErrNotInCluster {
+			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			panic(err)
 		}
 
 		cs := models.NewForConfigOrDie(config, pipelineConfig)
@@ -63,7 +69,6 @@ var runCmd = &cobra.Command{
 			LeaderElectionID:   "5e352c21.efunds.com",
 		})
 		c := controller.NewControllerOrDie(cs, mgr)
-		fmt.Println("run called")
 		c.Reconcile(ctrl.SetupSignalHandler())
 	},
 }
