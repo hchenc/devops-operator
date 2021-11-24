@@ -51,13 +51,15 @@ var runCmd = &cobra.Command{
 		var config *rest.Config
 
 		config, err := rest.InClusterConfig()
-		if err == rest.ErrNotInCluster {
-			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-			if err != nil {
+		if err != nil {
+			if err == rest.ErrNotInCluster {
+				config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+				if err != nil {
+					panic(err)
+				}
+			} else {
 				panic(err)
 			}
-		} else {
-			panic(err)
 		}
 
 		cs := models.NewForConfigOrDie(config, pipelineConfig)
