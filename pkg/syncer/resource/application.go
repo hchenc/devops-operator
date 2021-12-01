@@ -44,7 +44,7 @@ func (a applicationInfo) Create(obj interface{}) (interface{}, error) {
 					Name:        application.Name,
 					Namespace:   namespace,
 					Labels:      application.Labels,
-					Annotations: application.Labels,
+					Annotations: application.Annotations,
 					Finalizers:  application.Finalizers,
 					ClusterName: application.ClusterName,
 				},

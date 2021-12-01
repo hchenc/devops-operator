@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/go-logr/logr"
+	"github.com/hchenc/devops-operator/pkg/constant"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -77,9 +78,13 @@ type deploymentPredicate struct {
 
 func (d deploymentPredicate) Create(e event.CreateEvent) bool {
 	name := e.Meta.GetNamespace()
+	labels := e.Meta.GetLabels()
+	version, exists := labels[constant.KubesphereVersion]
 	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
 		return false
 	} else if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
+		return true
+	} else if exists && version == constant.KubesphereInitVersion {
 		return true
 	} else {
 		return false
