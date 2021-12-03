@@ -79,16 +79,16 @@ type deploymentPredicate struct {
 func (d deploymentPredicate) Create(e event.CreateEvent) bool {
 	name := e.Meta.GetNamespace()
 	labels := e.Meta.GetLabels()
-	version, exists := labels[constant.KubesphereVersion]
 	if strings.Contains(name, "system") || strings.Contains(name, "kube") {
 		return false
-	} else if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
-		return true
-	} else if exists && version == constant.KubesphereInitVersion {
-		return true
-	} else {
-		return false
 	}
+
+	if strings.Contains(name, "smoking") || strings.Contains(name, "fat") || strings.Contains(name, "uat") {
+		if version, exists := labels[constant.KubesphereVersion]; exists && version == constant.KubesphereInitVersion {
+			return true
+		}
+	}
+	return false
 }
 func (d deploymentPredicate) Update(e event.UpdateEvent) bool {
 	//if pod label no changes or add labels, ignore
